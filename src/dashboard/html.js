@@ -415,17 +415,20 @@ async function refreshJobs() {
 async function killJob(k) { await api('/api/jobs/'+encodeURIComponent(k)+'/kill',{method:'POST'}); setTimeout(()=>{if(currentTab==='Jobs')refreshJobs();else refreshDashboard();},1000); }
 async function viewLog(f) { $('#logPanel').style.display='block'; const r=await fetch('/api/logs/'+f); $('#logOut').textContent=await r.text(); }
 async function expandLog(rowId, logId, logfile) {
-  const logRow = $(logId);
+  const logRow = document.getElementById(logId);
+  if (!logRow) return;
   const isVisible = logRow.style.display !== 'none';
   if(isVisible) {
     logRow.style.display = 'none';
   } else {
-    const contentDiv = $('#log-'+logId.split('-')[1]);
-    try {
-      const r = await fetch('/api/logs/'+encodeURIComponent(logfile));
-      contentDiv.textContent = await r.text();
-    } catch(e) {
-      contentDiv.textContent = 'Error loading log: '+e.message;
+    const contentDiv = document.getElementById('log-'+logId.split('-')[1]);
+    if(contentDiv) {
+      try {
+        const r = await fetch('/api/logs/'+encodeURIComponent(logfile));
+        contentDiv.textContent = await r.text();
+      } catch(e) {
+        contentDiv.textContent = 'Error loading log: '+e.message;
+      }
     }
     logRow.style.display = 'table-row';
   }
