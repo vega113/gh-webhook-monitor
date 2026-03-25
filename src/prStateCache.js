@@ -210,6 +210,74 @@ class PRStateCache {
     }
     return openPRs;
   }
+
+  /**
+   * Track review threads for a PR (from webhook data)
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @param {Array<Object>} threads - Array of thread objects with id, isResolved, authorLogin
+   */
+  updateThreads(repo, prNumber, threads = []) {
+    const cacheKey = `${repo}#${prNumber}`;
+    let state = this.cache.get(cacheKey)?.state;
+
+    if (!state) {
+      state = {
+        prNumber,
+        repo,
+        mergeable: null,
+        isDraft: false,
+        checkStatus: "pending",
+        reviewState: "pending",
+        reviews: [],
+        checks: [],
+        comments: 0,
+        threads: [],
+      };
+    }
+
+    state.threads = threads || [];
+
+    // Update cache
+    this.cache.set(cacheKey, {
+      state,
+      expiresAt: Date.now() + this.cacheTTLSeconds * 1000,
+    });
+
+    return state;
+  }
+
+  /**
+   * Get unresolved threads from a specific bot on a PR
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @param {string} botLogin - Bot login name to filter by
+   * @returns {Array<Object>} Array of unresolved threads from the bot
+   */
+  getUnresolvedThreadsFromBot(repo, prNumber, botLogin) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const state = this.cache.get(cacheKey)?.state;
+
+    if (!state || !state.threads) return [];
+
+    return state.threads.filter(
+      (thread) =>
+        !thread.isResolved &&
+        thread.authorLogin &&
+        thread.authorLogin.toLowerCase().includes(botLogin.toLowerCase())
+    );
+  }
+
+  /**
+   * Check if a thread is from a specific bot
+   * @param {Object} thread - Thread object with authorLogin property
+   * @param {string} botLogin - Bot login name
+   * @returns {boolean} True if thread is from the bot
+   */
+  isThreadFromBot(thread, botLogin) {
+    if (!thread || !thread.authorLogin) return false;
+    return thread.authorLogin.toLowerCase().includes(botLogin.toLowerCase());
+  }
 }
 
 export { PRStateCache };

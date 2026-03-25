@@ -115,8 +115,21 @@ class ActionDispatcher {
   async decidActions(eventType, payload, prState, prInfo) {
     const action = payload.action;
 
-    // pull_request: synchronize (new push) → wait for CI, don't spawn agent
+    // pull_request: synchronize (new push) → check for bot review threads to resolve
     if (eventType === "pull_request" && action === "synchronize") {
+      const autoResolveBots = this.config?.settings?.autoResolveBots || [];
+      if (autoResolveBots.length > 0 && prState && prState.threads) {
+        // Check if there are unresolved threads from auto-resolve bots
+        const hasUnresolvedBotThreads = prState.threads.some((thread) => {
+          if (thread.isResolved) return false;
+          return autoResolveBots.some((botName) =>
+            (thread.authorLogin || "").toLowerCase().includes(botName.toLowerCase())
+          );
+        });
+        if (hasUnresolvedBotThreads) {
+          return [ActionType.RESOLVE_THREADS];
+        }
+      }
       return [ActionType.NOOP];
     }
 
@@ -163,6 +176,18 @@ class ActionDispatcher {
     // pull_request_review: changes_requested → spawn agent
     if (eventType === "pull_request_review" && action === "submitted") {
       const review = payload.review;
+      const reviewer = review?.user?.login || "";
+      const autoResolveBots = this.config?.settings?.autoResolveBots || [];
+
+      // Check if reviewer is a bot to auto-resolve
+      const isAutoResolveBot = autoResolveBots.some((botName) =>
+        reviewer.toLowerCase().includes(botName.toLowerCase())
+      );
+
+      if (isAutoResolveBot) {
+        return [ActionType.RESOLVE_THREADS];
+      }
+
       if (review?.state === "changes_requested") {
         return [ActionType.SPAWN_AGENT];
       }

@@ -13,6 +13,8 @@ import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
 import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
 import { initializeDispatcher, getDispatcher, getPRStateCache } from "./src/dispatcherInstance.js";
+import { ActionType } from "./src/dispatcher.js";
+import { resolveThreads } from "./src/actions/resolveThreads.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -52,6 +54,32 @@ app.post("/webhook", async (req, res) => {
     type: event,
     payload,
   });
+
+  // Execute actions from dispatcher
+  const config = getConfig();
+  for (const action of actions) {
+    if (action === ActionType.RESOLVE_THREADS) {
+      const prNumber = payload.pull_request?.number;
+      if (prNumber) {
+        const autoResolveBots = config.settings.autoResolveBots || [];
+        logEvent(
+          "RESOLVE_THREADS",
+          "action-triggered",
+          repo,
+          `PR #${prNumber}: Dispatched action to resolve bot review threads`
+        );
+        // Execute in background
+        resolveThreads(repo, prNumber, autoResolveBots).catch((err) => {
+          logEvent(
+            "RESOLVE_THREADS",
+            "error",
+            repo,
+            `PR #${prNumber}: ${err.message}`
+          );
+        });
+      }
+    }
+  }
 
   // Execute handlers based on dispatcher decision
   // For now, still call handlers directly - they contain business logic

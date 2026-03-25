@@ -84,6 +84,7 @@ function defaultConfig() {
       issueLabels: ["deploy-failure", "auto-fix", "agent-task"],
       ignoredBots: ["github-actions[bot]", "dependabot[bot]"],
       gateCheckNames: ["Codex Review Gate"],
+      autoResolveBots: ["coderabbitai", "chatgpt-codex-connector"],
     },
     promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES },
   };

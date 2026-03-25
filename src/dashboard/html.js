@@ -223,7 +223,8 @@ function settingsTab(cfg) {
     + tagPanel('Gate Check Names','gateCheckNames',s.gateCheckNames||[],'kw','newGate')
     + tagPanel('Trigger Keywords','triggerKeywords',s.triggerKeywords,'kw','newKw')
     + tagPanel('Auto-fix Issue Labels','issueLabels',s.issueLabels,'label','newLbl')
-    + tagPanel('Ignored Bots','ignoredBots',s.ignoredBots,'bot','newBot');
+    + tagPanel('Ignored Bots','ignoredBots',s.ignoredBots,'bot','newBot')
+    + tagPanel('Auto-resolve Bots','autoResolveBots',s.autoResolveBots||[],'bot','newAutoBot');
 }
 function tagPanel(title,key,arr,cls,inputId) {
   return '<div class="panel"><h2>'+title+'</h2><div>'+arr.map(v=>'<span class="tag '+cls+'">'+esc(v)+'<span class="x" onclick="removeTag(\\''+key+'\\',\\''+esc(v)+'\\')"> x</span></span>').join(' ')+'</div><div class="row" style="margin-top:8px"><input id="'+inputId+'" placeholder="Add..."><button onclick="addTag(\\''+key+'\\',\\''+inputId+'\\')">Add</button></div></div>';
