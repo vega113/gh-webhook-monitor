@@ -7,11 +7,12 @@ import { handleCheckSuite } from "./src/handlers/checkSuite.js";
 import { handleCheckRun } from "./src/handlers/checkRun.js";
 import { handleIssues } from "./src/handlers/issues.js";
 import { handlePullRequest } from "./src/handlers/pullRequest.js";
+import { handlePullRequestMerge } from "./src/handlers/pullRequestMerge.js";
 import { handleIssueComment } from "./src/handlers/issueComment.js";
 import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
 import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
-import { initializeDispatcher, getDispatcher } from "./src/dispatcherInstance.js";
+import { initializeDispatcher, getDispatcher, getPRStateCache } from "./src/dispatcherInstance.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -70,6 +71,11 @@ app.post("/webhook", async (req, res) => {
       break;
     case "pull_request":
       handlePullRequest(payload);
+      // Also handle merge events with cascade updates
+      if (payload.action === "closed" && payload.pull_request?.merged) {
+        const prStateCache = getPRStateCache();
+        await handlePullRequestMerge(payload, prStateCache);
+      }
       break;
     case "issue_comment":
       handleIssueComment(payload);

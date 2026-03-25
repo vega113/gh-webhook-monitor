@@ -13,6 +13,14 @@ function handlePullRequest(payload) {
   if (payload.action === "opened" || payload.action === "synchronize") {
     logEvent("PR", payload.action, repo, `#${pr.number}: ${pr.title}`);
   }
+
+  if (payload.action === "closed") {
+    if (pr.merged) {
+      logEvent("PR", "merged", repo, `#${pr.number}: ${pr.title}`);
+    } else {
+      logEvent("PR", "closed", repo, `#${pr.number}: ${pr.title}`);
+    }
+  }
 }
 
 export { handlePullRequest };

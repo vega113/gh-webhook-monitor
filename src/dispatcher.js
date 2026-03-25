@@ -125,10 +125,27 @@ class ActionDispatcher {
       return [ActionType.NOOP];
     }
 
-    // pull_request: closed with merged=true → notify other PRs on same base
+    // pull_request: closed with merged=true → update other PRs on same base
     if (eventType === "pull_request" && action === "closed") {
       if (payload.pull_request?.merged) {
-        return [ActionType.UPDATE_BRANCH];
+        // Find all open PRs targeting same base branch and return UPDATE_BRANCH for each
+        const repo = payload.repository?.full_name;
+        const baseBranch = payload.pull_request?.base?.ref;
+        const mergedPRNumber = payload.pull_request?.number;
+
+        if (repo && baseBranch && this.prStateCache) {
+          const openPRs = this.prStateCache.listOpenPRs(repo, baseBranch);
+          // Filter out the PR that was just merged
+          const targetPRs = openPRs.filter(
+            (pr) => pr.prNumber !== mergedPRNumber
+          );
+
+          if (targetPRs.length > 0) {
+            // Return UPDATE_BRANCH action for each PR that needs updating
+            return targetPRs.map(() => ActionType.UPDATE_BRANCH);
+          }
+        }
+        return [ActionType.NOOP];
       }
       return [ActionType.NOOP];
     }

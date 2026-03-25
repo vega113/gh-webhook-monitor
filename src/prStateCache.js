@@ -9,6 +9,7 @@ class PRStateCache {
     this.ghClient = ghClient;
     this.cacheTTLSeconds = cacheTTLSeconds;
     this.cache = new Map(); // key: "owner/repo#prNumber"
+    this.prUpdateTimes = new Map(); // key: "owner/repo#prNumber", tracks last update attempt time
   }
 
   /**
@@ -55,6 +56,7 @@ class PRStateCache {
       repo,
       mergeable: null, // null = unknown
       isDraft: false,
+      base: null, // base branch name
       checkStatus: "pending", // pending, success, failure, neutral
       reviewState: "pending", // pending, approved, changes_requested, commented
       reviews: [],
@@ -91,6 +93,7 @@ class PRStateCache {
       state.isDraft = pr.draft;
       state.title = pr.title;
       state.body = pr.body;
+      state.base = pr.base?.ref; // Track base branch
     }
 
     if (webhookData.type === "pull_request_review") {
@@ -140,6 +143,72 @@ class PRStateCache {
         expiresIn: Math.max(0, Math.floor((val.expiresAt - Date.now()) / 1000)),
       })),
     };
+  }
+
+  /**
+   * Record the last update attempt time for a PR
+   * Prevents duplicate updates within a short window
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {Object} Update time info
+   */
+  recordPRUpdateAttempt(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const now = Date.now();
+    this.prUpdateTimes.set(cacheKey, now);
+    return { prNumber, repo, timestamp: new Date(now).toISOString() };
+  }
+
+  /**
+   * Check if a PR was recently updated (within cooldown period)
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @param {number} cooldownMs - Cooldown period in milliseconds (default: 60000 = 1 minute)
+   * @returns {boolean} True if PR was updated recently
+   */
+  wasRecentlyUpdated(repo, prNumber, cooldownMs = 60000) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const lastUpdate = this.prUpdateTimes.get(cacheKey);
+    if (!lastUpdate) return false;
+    return Date.now() - lastUpdate < cooldownMs;
+  }
+
+  /**
+   * Get last update time for a PR
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {string|null} ISO timestamp of last update, or null if never updated
+   */
+  getLastUpdateTime(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const timestamp = this.prUpdateTimes.get(cacheKey);
+    return timestamp ? new Date(timestamp).toISOString() : null;
+  }
+
+  /**
+   * List all cached open PRs for a repo with optional base branch filter
+   * @param {string} repo - Repository in format owner/repo
+   * @param {string} baseBranch - Optional base branch to filter by
+   * @returns {Array<Object>} Array of PR objects
+   */
+  listOpenPRs(repo, baseBranch = null) {
+    const openPRs = [];
+    for (const [key, cached] of this.cache.entries()) {
+      // Check if this is a PR for the specified repo
+      if (!key.startsWith(`${repo}#`)) continue;
+
+      const state = cached.state;
+      // Filter for open PRs (not merged, not closed)
+      if (state && state.prNumber && state.base === baseBranch) {
+        openPRs.push({
+          prNumber: state.prNumber,
+          title: state.title || "Unknown",
+          lastUpdated: this.getLastUpdateTime(repo, state.prNumber),
+          base: state.base,
+        });
+      }
+    }
+    return openPRs;
   }
 }
 
