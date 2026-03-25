@@ -1,13 +1,39 @@
 import { spawn } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
 
 const activeJobs = new Map();
-const jobHistory = [];
+let jobHistory = [];
 const MAX_HISTORY = 200;
+const HISTORY_FILE = join(getLogDir(), "job-history.json");
 let jobQueue = null; // Set by setJobQueue
+
+// Load job history from disk on startup
+function loadJobHistory() {
+  try {
+    if (existsSync(HISTORY_FILE)) {
+      const data = readFileSync(HISTORY_FILE, "utf-8");
+      jobHistory = JSON.parse(data);
+      if (!Array.isArray(jobHistory)) jobHistory = [];
+    }
+  } catch (e) {
+    // If file is corrupted, start fresh
+    jobHistory = [];
+  }
+}
+
+// Save job history to disk
+function saveJobHistory() {
+  try {
+    writeFileSync(HISTORY_FILE, JSON.stringify(jobHistory.slice(0, MAX_HISTORY), null, 2));
+  } catch (e) {
+    logEvent("WARN", "history-save", "system", `Failed to save job history: ${e.message}`);
+  }
+}
+
+loadJobHistory();
 
 function buildAgentCommand(prompt, agentType) {
   const config = getConfig();
@@ -146,6 +172,7 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
       outputTail: fullOutput.slice(-2000),
     });
     if (jobHistory.length > MAX_HISTORY) jobHistory.length = MAX_HISTORY;
+    saveJobHistory();
 
     // Try to dequeue and spawn next job
     processQueue();
