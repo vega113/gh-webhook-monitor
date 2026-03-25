@@ -4,6 +4,7 @@ import { logEvent } from "./src/logger.js";
 import { verifySignature } from "./src/webhook.js";
 import { handlePullRequestReview } from "./src/handlers/pullRequestReview.js";
 import { handleCheckSuite } from "./src/handlers/checkSuite.js";
+import { handleCheckRun } from "./src/handlers/checkRun.js";
 import { handleIssues } from "./src/handlers/issues.js";
 import { handlePullRequest } from "./src/handlers/pullRequest.js";
 import { handleIssueComment } from "./src/handlers/issueComment.js";
@@ -60,6 +61,9 @@ app.post("/webhook", async (req, res) => {
       break;
     case "check_suite":
       handleCheckSuite(payload);
+      break;
+    case "check_run":
+      handleCheckRun(payload);
       break;
     case "issues":
       handleIssues(payload);

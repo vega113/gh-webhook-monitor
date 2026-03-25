@@ -36,6 +36,7 @@
     "enabledEvents": {
       "pull_request_review": true,
       "check_suite": true,
+      "check_run": true,
       "issues": true,
       "issue_comment": true,
       "pull_request": true
@@ -51,6 +52,9 @@
     "ignoredBots": [
       "github-actions[bot]",
       "dependabot[bot]"
+    ],
+    "gateCheckNames": [
+      "Codex Review Gate"
     ],
     "claudeBin": "claude",
     "rateLimits": {

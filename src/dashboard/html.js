@@ -220,6 +220,7 @@ function settingsTab(cfg) {
     + '<div class="row"><label style="width:220px">Max concurrent jobs</label><input id="sMaxJ" type="number" min="1" max="10" value="'+s.maxConcurrentJobs+'" style="width:80px"><button onclick="saveSetting(\\'maxConcurrentJobs\\',+$(\\'\\'#sMaxJ\\'\\').value)">Save</button></div>'
     + '<div class="row"><label style="width:220px">Job timeout (minutes)</label><input id="sTimeout" type="number" min="1" max="60" value="'+s.jobTimeoutMinutes+'" style="width:80px"><button onclick="saveSetting(\\'jobTimeoutMinutes\\',+$(\\'\\'#sTimeout\\'\\').value)">Save</button></div>'
     + '</div><div class="panel"><h2>Enabled Events</h2>'+evHtml+'</div>'
+    + tagPanel('Gate Check Names','gateCheckNames',s.gateCheckNames||[],'kw','newGate')
     + tagPanel('Trigger Keywords','triggerKeywords',s.triggerKeywords,'kw','newKw')
     + tagPanel('Auto-fix Issue Labels','issueLabels',s.issueLabels,'label','newLbl')
     + tagPanel('Ignored Bots','ignoredBots',s.ignoredBots,'bot','newBot');

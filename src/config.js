@@ -75,6 +75,7 @@ function defaultConfig() {
       enabledEvents: {
         pull_request_review: true,
         check_suite: true,
+        check_run: true,
         issues: true,
         issue_comment: true,
         pull_request: true,
@@ -82,6 +83,7 @@ function defaultConfig() {
       triggerKeywords: ["@claude", "please fix"],
       issueLabels: ["deploy-failure", "auto-fix", "agent-task"],
       ignoredBots: ["github-actions[bot]", "dependabot[bot]"],
+      gateCheckNames: ["Codex Review Gate"],
     },
     promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES },
   };

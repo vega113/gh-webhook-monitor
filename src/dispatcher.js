@@ -87,6 +87,12 @@ class ActionDispatcher {
         // check_suite events may not have PR, use branch
         branch = payload.check_suite?.head_branch;
         break;
+      case "check_run":
+        // check_run events contain PR info in pull_requests array
+        if (payload.check_run?.pull_requests?.length > 0) {
+          prNumber = payload.check_run.pull_requests[0].number;
+        }
+        break;
       case "issue_comment":
         prNumber = payload.issue?.number;
         prTitle = payload.issue?.title;
@@ -154,6 +160,14 @@ class ActionDispatcher {
         return [ActionType.NOOP];
       }
       return [ActionType.NOOP];
+    }
+
+    // check_run: completed → potentially rerun gate
+    if (eventType === "check_run" && action === "completed") {
+      const checkRun = payload.check_run;
+      // Handler will evaluate if gate should be re-run
+      // Dispatcher just records the decision
+      return [ActionType.RERUN_GATE];
     }
 
     // issue_comment: mention/command → spawn agent
