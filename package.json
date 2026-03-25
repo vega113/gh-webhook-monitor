@@ -1,0 +1,15 @@
+{
+  "name": "gh-webhook-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitHub webhook listener that spawns Claude Code to handle events",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "tunnel": "cloudflared tunnel --url http://localhost:3847",
+    "dev": "node server.js & cloudflared tunnel --url http://localhost:3847"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
