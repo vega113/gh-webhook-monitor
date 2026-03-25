@@ -1,0 +1,67 @@
+name: Server Health Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start server in background
+        run: |
+          npm start > /tmp/server.log 2>&1 &
+          echo $! > /tmp/server.pid
+          echo "Server PID: $(cat /tmp/server.pid)"
+
+      - name: Wait for server startup
+        run: sleep 3
+
+      - name: Health check - /api/health
+        run: |
+          echo "Testing /api/health..."
+          curl -f -s http://localhost:3847/api/health || (cat /tmp/server.log && exit 1)
+
+      - name: Health check - /api/config
+        run: |
+          echo "Testing /api/config..."
+          curl -f -s http://localhost:3847/api/config > /dev/null || (cat /tmp/server.log && exit 1)
+
+      - name: Health check - /api/events
+        run: |
+          echo "Testing /api/events..."
+          curl -f -s http://localhost:3847/api/events > /dev/null || (cat /tmp/server.log && exit 1)
+
+      - name: Health check - Dashboard (/)
+        run: |
+          echo "Testing dashboard..."
+          curl -f -s http://localhost:3847/ | grep -q "<!DOCTYPE\|<html" || (cat /tmp/server.log && exit 1)
+
+      - name: Kill server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then
+            kill $(cat /tmp/server.pid) 2>/dev/null || true
+            sleep 1
+          fi
+
+      - name: Show server logs on failure
+        if: failure()
+        run: cat /tmp/server.log

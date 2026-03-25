@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "watch-restart": "node scripts/watch-and-restart.js",
+    "webhook-restart": "bash scripts/webhook-restart.sh",
     "generate-icons": "node scripts/generate-icons.js",
     "tunnel": "cloudflared tunnel --url http://localhost:3847",
     "dev": "node server.js & cloudflared tunnel --url http://localhost:3847"

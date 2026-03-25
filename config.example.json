@@ -1,0 +1,30 @@
+{
+  "repos": {
+    "owner/repo": {
+      "localPath": "/path/to/local/checkout",
+      "enabled": true
+    }
+  },
+  "agent": {
+    "type": "claude",
+    "claude": {
+      "bin": "claude",
+      "model": "",
+      "allowedTools": "",
+      "extraArgs": "--dangerously-skip-permissions"
+    }
+  },
+  "settings": {
+    "webhookSecret": "GENERATE NEW SECRET FROM GITHUB WEBHOOK SETTINGS",
+    "maxConcurrentJobs": 10,
+    "jobTimeoutMinutes": 20,
+    "enabledEvents": {
+      "pull_request_review": true,
+      "check_suite": true,
+      "check_run": true,
+      "issues": true,
+      "issue_comment": true,
+      "pull_request": true
+    }
+  }
+}

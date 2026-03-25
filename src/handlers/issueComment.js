@@ -6,6 +6,11 @@ import { spawnAgentWithReaction } from "../actions/spawnAgentWithReaction.js";
 import { reactToComment } from "../actions/reactions.js";
 import { isOnCooldown, setCooldown } from "./utils.js";
 import { getRateLimiter } from "../rateLimiterInstance.js";
+import {
+  isIssueAssigned,
+  assignIssueToBot,
+  addInProgressLabel,
+} from "../issueCoordination.js";
 
 function handleIssueComment(payload) {
   const config = getConfig();
@@ -66,6 +71,13 @@ function handleIssueComment(payload) {
       return;
     }
 
+    // Check if issue is already assigned (being handled)
+    const settings = config.settings;
+    if (settings.useAssignmentForCoordination && isIssueAssigned(repo, issue.number)) {
+      logEvent("SKIP", "already-assigned", repo, `Issue #${issue.number}`);
+      return;
+    }
+
     // React with eyes on the comment itself
     reactToComment(repo, comment.id, "eyes");
 
@@ -77,6 +89,20 @@ function handleIssueComment(payload) {
       labels: labels.join(", "),
       repo,
     });
+
+    // Assign issue to bot to coordinate handling
+    if (settings.useAssignmentForCoordination && settings.botUsername) {
+      if (!assignIssueToBot(repo, issue.number, settings.botUsername)) {
+        logEvent("WARN", "assignment-failed", repo, `Issue #${issue.number}`);
+        // Fall back to label-based coordination
+        if (settings.useLabelsForCoordination) {
+          addInProgressLabel(repo, issue.number, settings.inProgressLabel);
+        }
+      }
+    } else if (settings.useLabelsForCoordination) {
+      // Use label-based coordination as backup
+      addInProgressLabel(repo, issue.number, settings.inProgressLabel);
+    }
 
     setCooldown(`issue-${repo}-${issue.number}`);
     spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issue.number);
