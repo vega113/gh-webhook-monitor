@@ -16,8 +16,9 @@ import { initializeDispatcher, getDispatcher, getPRStateCache, getStatusCache } 
 import { ActionType } from "./src/dispatcher.js";
 import { resolveThreads } from "./src/actions/resolveThreads.js";
 import { handlePullRequestConflict } from "./src/handlers/pullRequestConflict.js";
-import { spawnAgent } from "./src/actions/spawnAgent.js";
+import { spawnAgent, setJobQueue } from "./src/actions/spawnAgent.js";
 import { getRepoPath } from "./src/config.js";
+import { JobQueue } from "./src/jobQueue.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -32,6 +33,10 @@ const rateLimiter = getRateLimiter();
 // Initialize dispatcher
 initializeDispatcher();
 const dispatcher = getDispatcher();
+
+// Initialize job queue
+const jobQueue = new JobQueue();
+setJobQueue(jobQueue);
 
 // Create Express app
 const app = express();
@@ -134,7 +139,7 @@ app.post("/webhook", async (req, res) => {
 
 // Setup API routes
 const statusCache = getStatusCache();
-setupRoutes(app, rateLimiter, dispatcher, statusCache);
+setupRoutes(app, rateLimiter, dispatcher, statusCache, jobQueue);
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));
