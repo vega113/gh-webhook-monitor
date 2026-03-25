@@ -307,14 +307,36 @@ async function addTag(key,inputId) { const v=$('#'+inputId).value.trim(); if(!v)
 async function removeTag(key,val) { const c=await api('/api/config'); c.settings[key]=c.settings[key].filter(x=>x!==val); await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:c.settings[key]})}); renderContent(); }
 
 // --- Jobs ---
-function jobsTab() { return '<div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="logPanel" style="display:none"><h2>Session Log</h2><pre class="log" id="logOut"></pre></div>'; }
+function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="logPanel" style="display:none"><h2>Session Log</h2><pre class="log" id="logOut"></pre></div>'; }
 async function refreshJobs() {
   const d = await api('/api/jobs');
+  const stats = await api('/api/jobs/stats');
+
+  // Queue stats
+  const s = $('#jStats');
+  if(s) {
+    const capacity = stats.capacity;
+    const pct = Math.round((capacity.used / capacity.total) * 100);
+    const barFill = Array(Math.round(pct/5)).fill('█').join('')+Array(20-Math.round(pct/5)).fill('░').join('');
+    s.innerHTML = '<div style="margin-bottom:12px"><strong>Capacity:</strong> '+capacity.used+'/'+capacity.total+' ('+pct+'%)</div><div style="font-family:monospace;margin-bottom:12px;font-size:12px">'+barFill+'</div><div><strong>Pending:</strong> '+stats.pendingJobs+' jobs in queue</div>';
+  }
+
+  // Pending queue
+  const q = $('#jQueue');
+  if(q) {
+    if(d.pending && d.pending.length) {
+      q.innerHTML = d.pending.map((j,i) => '<div class="job-card" style="opacity:0.8"><div class="key" style="color:#d29922">Queue #'+(i+1)+' — '+esc(j.jobKey)+'</div><div class="meta">Queued: '+esc(new Date(j.queuedAt).toLocaleTimeString())+' | Repo: '+esc(j.repoFullName)+'</div></div>').join('');
+    } else { q.innerHTML='<div class="empty">No pending jobs</div>'; }
+  }
+
+  // Active jobs
   const a = $('#jActive');
   if(!a) return;
   if(d.active.length) {
     a.innerHTML = d.active.map(j => '<div class="job-card"><div class="key">'+esc(j.key)+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | Running '+j.running+'</div><div class="live-output"><pre class="log" style="max-height:200px">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>').join('');
   } else { a.innerHTML='<div class="empty">No active jobs</div>'; }
+
+  // History
   const h = $('#jHist');
   if(h && d.history.length) {
     h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+d.history.map(j => {
@@ -375,7 +397,10 @@ async function tick() {
     $('#sDot').className='dot green';
     $('#sAgent').textContent=h.agentType;
     $('#sUptime').textContent=fmt(h.uptime);
-    $('#sJobs').textContent=h.activeJobs+' job'+(h.activeJobs!==1?'s':'');
+    const pending = h.pendingJobs || 0;
+    let jobStatus = h.activeJobs + ' job' + (h.activeJobs !== 1 ? 's' : '');
+    if (pending > 0) jobStatus += ' + ' + pending + ' queued';
+    $('#sJobs').textContent = jobStatus;
   } catch { $('#sDot').className='dot red'; }
   if(currentTab==='Dashboard') refreshDashboard();
   else if(currentTab==='Status') refreshStatus();
