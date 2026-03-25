@@ -110,11 +110,24 @@ function defaultConfig() {
   };
 }
 
+function validateBotUsername(config) {
+  const botUsername = config.settings?.botUsername;
+  const useAssignment = config.settings?.useAssignmentForCoordination;
+
+  if (useAssignment && (!botUsername || botUsername.trim().length === 0)) {
+    console.warn(
+      "WARNING: Issue assignment coordination is enabled (useAssignmentForCoordination: true) " +
+      "but botUsername is empty or not set. Assignment operations will fail. " +
+      "Set a valid botUsername in settings (e.g., 'github-actions[bot]')"
+    );
+  }
+}
+
 function loadConfig() {
   if (existsSync(CONFIG_PATH)) {
     const saved = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
     const def = defaultConfig();
-    return {
+    const config = {
       repos: saved.repos || def.repos,
       agentConfig: {
         defaultAgent: saved.agentConfig?.defaultAgent || def.agentConfig.defaultAgent,
@@ -136,9 +149,12 @@ function loadConfig() {
       },
       promptTemplates: { ...def.promptTemplates, ...(saved.promptTemplates || {}) },
     };
+    validateBotUsername(config);
+    return config;
   }
   const c = defaultConfig();
   writeFileSync(CONFIG_PATH, JSON.stringify(c, null, 2));
+  validateBotUsername(c);
   return c;
 }
 

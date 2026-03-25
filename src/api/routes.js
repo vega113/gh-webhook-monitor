@@ -123,32 +123,41 @@ function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
   });
 
   // Issue coordination endpoints
+  // GET /api/issues/assigned?repo=owner/repo&issue=123
+  // Returns assignee information for a specific issue
   app.get("/api/issues/assigned", (req, res) => {
-    const config = getConfig();
     const repo = req.query.repo;
+    const issue = req.query.issue;
 
     if (!repo) {
       return res.status(400).json({ error: "repo query parameter required" });
     }
 
+    if (!issue || isNaN(parseInt(issue))) {
+      return res.status(400).json({ error: "issue query parameter required (must be a number)" });
+    }
+
     try {
-      const assignees = getIssueAssignees(repo, req.query.issue);
+      const assignees = getIssueAssignees(repo, parseInt(issue));
       res.json({ assigned: assignees.length > 0, assignees });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
+  // GET /api/issues/unassigned?repo=owner/repo
+  // Returns guidance on querying unassigned issues using GitHub API
+  // Implementation note: This endpoint is informational as real-time unassigned issue listing
+  // should be performed directly via GitHub API for accuracy and to avoid stale data
   app.get("/api/issues/unassigned", (req, res) => {
-    const config = getConfig();
     const repo = req.query.repo;
 
     if (!repo) {
       return res.status(400).json({ error: "repo query parameter required" });
     }
 
-    // This would typically query open issues without assignees
-    // For now, return a placeholder that the client can use
+    // Return informational response directing client to use GitHub API
+    // This avoids caching issues and keeps the monitor lightweight
     res.json({
       message: "Use GitHub API directly to query unassigned issues",
       example: `gh api repos/${repo}/issues --jq '.[] | select(.assignees == []) | {number: .number, title: .title}'`,
