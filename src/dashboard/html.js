@@ -107,7 +107,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const api = async (u, o) => (await fetch(u, {headers:{'Content-Type':'application/json'},...o})).json();
 
-const TABS = ['Dashboard','Status','Repos','Agent','Prompts','Settings','Jobs','Events','Dispatch'];
+const TABS = ['Dashboard','Status','Repos','Agent','Prompts','Settings','Jobs','Work Report','Events','Dispatch'];
 let currentTab = 'Dashboard';
 
 function renderTabs() {
@@ -126,6 +126,7 @@ async function renderContent() {
     case 'Prompts': el.innerHTML = promptsTab(cfg); break;
     case 'Settings': el.innerHTML = settingsTab(cfg); break;
     case 'Jobs': el.innerHTML = jobsTab(); refreshJobs(); break;
+    case 'Work Report': el.innerHTML = workReportTab(); refreshWorkReport(); break;
     case 'Events': el.innerHTML = eventsTab(); refreshEvents(); break;
     case 'Dispatch': el.innerHTML = dispatchTab(); refreshDispatch(); break;
   }
@@ -138,7 +139,13 @@ function parseJobKey(key) {
   const [, type, repoAndNum, num] = match;
   const typeMap = { issue: '📋 Issue', pr: '🔀 PR', review: '👁️ Review', ci: '🔧 CI', conflict: '⚔️ Conflict' };
   const displayType = typeMap[type] || type;
-  return { type: displayType, repo: repoAndNum, num: num, display: displayType + ' ' + repoAndNum + (num || '') };
+  const numStr = (num || '').replace('-', '');
+  let displayLink = displayType + ' ' + repoAndNum + (num || '');
+  if (numStr && (type === 'issue' || type === 'pr' || type === 'review')) {
+    const ghUrl = 'https://github.com/' + repoAndNum + '/' + (type === 'issue' ? 'issues' : 'pull') + '/' + numStr;
+    displayLink = displayType + ' <a href="' + ghUrl + '" target="_blank" style="color:#58a6ff;text-decoration:underline">' + repoAndNum + '#' + numStr + '</a>';
+  }
+  return { type: displayType, repo: repoAndNum, num: numStr, display: displayLink };
 }
 function dashboardTab() { return '<div class="panel"><h2>Active Jobs</h2><div id="dActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Recent Events</h2><div id="dEvents"><div class="empty">No events</div></div></div>'; }
 async function refreshDashboard() {
@@ -326,6 +333,35 @@ async function toggleEv(ev,on) { const c=await api('/api/config'); c.settings.en
 async function addTag(key,inputId) { const v=$('#'+inputId).value.trim(); if(!v)return; const c=await api('/api/config'); c.settings[key].push(v); await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:c.settings[key]})}); renderContent(); }
 async function removeTag(key,val) { const c=await api('/api/config'); c.settings[key]=c.settings[key].filter(x=>x!==val); await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:c.settings[key]})}); renderContent(); }
 
+// --- Work Report ---
+function workReportTab() { return '<div class="panel"><h2>Agent Work Report</h2><p class="hint">What agents have fixed, created, and resolved</p><div id="wReport"><div class="empty">Loading...</div></div></div>'; }
+async function refreshWorkReport() {
+  const r = $('#wReport');
+  if (!r) return;
+  try {
+    const jobs = await api('/api/jobs');
+    const history = jobs.history || [];
+    if (history.length === 0) {
+      r.innerHTML = '<div class="empty">No agent work yet</div>';
+      return;
+    }
+    const grouped = {};
+    history.forEach(h => {
+      const [type, ...rest] = h.key.split('-');
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push(h);
+    });
+    let html = '';
+    Object.entries(grouped).forEach(([type, jobs]) => {
+      const icon = {issue:'📋',pr:'🔀',review:'👁️',ci:'🔧',conflict:'⚔️'}[type] || '⚙️';
+      html += '<div class="panel" style="background:#0d1117;border-left:4px solid #58a6ff"><h3 style="margin-bottom:12px">'+icon+' '+type.toUpperCase()+'</h3>';
+      html += jobs.slice(0,5).map(j => '<div style="padding:8px;margin:4px 0;background:#161b22;border-radius:4px;font-size:12px"><strong>'+esc(j.key)+'</strong><br/><span style="color:#8b949e">Duration: '+j.duration+' | Exit: '+j.code+'</span><br/><span style="color:#58a6ff">'+esc((j.outputTail||'').split('\n').slice(-1)[0].substring(0,100))+'</span></div>').join('');
+      html += '</div>';
+    });
+    r.innerHTML = html;
+  } catch(e) { r.innerHTML = '<div class="empty">Error loading report</div>'; }
+}
+
 // --- Jobs ---
 function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="logPanel" style="display:none"><h2>Session Log</h2><pre class="log" id="logOut"></pre></div>'; }
 async function refreshJobs() {
@@ -431,6 +467,7 @@ async function tick() {
   if(currentTab==='Dashboard') refreshDashboard();
   else if(currentTab==='Status') refreshStatus();
   else if(currentTab==='Jobs') refreshJobs();
+  else if(currentTab==='Work Report') refreshWorkReport();
   else if(currentTab==='Dispatch') refreshDispatch();
 }
 function fmt(s){if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m';return Math.floor(s/86400)+'d';}
