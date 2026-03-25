@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "generate-icons": "node scripts/generate-icons.js",
     "tunnel": "cloudflared tunnel --url http://localhost:3847",
     "dev": "node server.js & cloudflared tunnel --url http://localhost:3847"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "sharp": "^0.34.5"
   }
 }

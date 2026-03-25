@@ -430,6 +430,7 @@ function handleIssueComment(payload) {
 const app = express();
 app.use(express.json({ verify: (req, _res, buf) => (req.rawBody = buf) }));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
 app.post("/webhook", (req, res) => {
   if (!verifySignature(req.rawBody, req.headers["x-hub-signature-256"])) { logEvent("REJECT", "bad-sig", "unknown", ""); return res.status(401).send("Bad signature"); }
@@ -476,6 +477,8 @@ function dashboardHTML() {
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Webhook Monitor</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="manifest" href="/manifest.json">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9}

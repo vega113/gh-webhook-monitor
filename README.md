@@ -1,5 +1,7 @@
 # gh-webhook-monitor
 
+![GitHub Webhook Monitor Logo](public/logo.svg)
+
 A local server that receives GitHub webhook events and spawns AI agents (Claude Code or Codex CLI) to handle them automatically. When someone posts a code review, opens an issue, or CI fails, the agent investigates and fixes the problem.
 
 ## How it works
