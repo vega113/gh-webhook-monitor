@@ -7,6 +7,7 @@ import { logEvent, getLogDir } from "../logger.js";
 const activeJobs = new Map();
 const jobHistory = [];
 const MAX_HISTORY = 200;
+let jobQueue = null; // Set by setJobQueue
 
 function buildAgentCommand(prompt, agentType) {
   const config = getConfig();
@@ -42,13 +43,29 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     logEvent("SKIP", "duplicate", jobKey, "Already running");
     return;
   }
+
+  // Check if job would exceed the limit
   if (activeJobs.size >= config.settings.maxConcurrentJobs) {
-    logEvent(
-      "SKIP",
-      "max-jobs",
-      jobKey,
-      `Limit ${config.settings.maxConcurrentJobs}`
-    );
+    // Queue the job instead of dropping it
+    if (jobQueue) {
+      const queued = jobQueue.enqueue({
+        jobKey,
+        repoPath,
+        prompt,
+        repoFullName,
+        queuedAt: new Date().toISOString(),
+      });
+      if (queued) {
+        logEvent(
+          "QUEUE",
+          "max-jobs",
+          jobKey,
+          `Limit ${config.settings.maxConcurrentJobs}, queued (${jobQueue.length()} pending)`
+        );
+      } else {
+        logEvent("SKIP", "duplicate-queued", jobKey, "Already queued");
+      }
+    }
     return;
   }
 
@@ -129,6 +146,9 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
       outputTail: fullOutput.slice(-2000),
     });
     if (jobHistory.length > MAX_HISTORY) jobHistory.length = MAX_HISTORY;
+
+    // Try to dequeue and spawn next job
+    processQueue();
   });
 }
 
@@ -140,4 +160,36 @@ function getJobHistory() {
   return jobHistory;
 }
 
-export { spawnAgent, buildAgentCommand, getActiveJobs, getJobHistory };
+function setJobQueue(queue) {
+  jobQueue = queue;
+}
+
+function processQueue() {
+  if (!jobQueue || activeJobs.size >= getConfig().settings.maxConcurrentJobs) {
+    return; // No queue or still at capacity
+  }
+
+  const nextJob = jobQueue.dequeue();
+  if (!nextJob) {
+    return; // Queue is empty
+  }
+
+  logEvent(
+    "QUEUE",
+    "dequeue",
+    nextJob.jobKey,
+    `Processing queued job (${jobQueue.length()} remaining)`
+  );
+
+  // Spawn the dequeued job
+  spawnAgent(nextJob.repoPath, nextJob.prompt, nextJob.jobKey, nextJob.repoFullName);
+}
+
+export {
+  spawnAgent,
+  buildAgentCommand,
+  getActiveJobs,
+  getJobHistory,
+  setJobQueue,
+  processQueue,
+};

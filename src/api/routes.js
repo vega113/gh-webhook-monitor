@@ -8,13 +8,20 @@ import { setupRateLimitRoutes } from "./rateLimitApi.js";
 import { setupDispatcherRoutes } from "./dispatcherApi.js";
 import { setupStatusRoutes } from "./statusApi.js";
 
-function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
+function setupRoutes(
+  app,
+  rateLimiter,
+  dispatcher,
+  statusCache = null,
+  jobQueue = null
+) {
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
     res.json({
       status: "ok",
       activeJobs: getActiveJobs().size,
+      pendingJobs: jobQueue ? jobQueue.length() : 0,
       uptime: Math.floor(process.uptime()),
       agentType: config.agent.type,
     });
@@ -93,7 +100,37 @@ function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
         agentType: v.agentType,
         output: v.output.join("").slice(-1000),
       })),
+      pending: jobQueue ? jobQueue.stats().queuedJobs : [],
       history: jobHistory.slice(0, 50),
+    });
+  });
+
+  // Queue endpoints
+  app.get("/api/jobs/queue", (_req, res) => {
+    if (!jobQueue) {
+      return res.json({ pending: 0, queuedJobs: [] });
+    }
+    res.json(jobQueue.stats());
+  });
+
+  app.get("/api/jobs/stats", (_req, res) => {
+    const config = getConfig();
+    const activeJobs = getActiveJobs();
+    const stats = jobQueue ? jobQueue.stats() : { pending: 0, queuedJobs: [] };
+    res.json({
+      maxConcurrentJobs: config.settings.maxConcurrentJobs,
+      activeJobs: activeJobs.size,
+      pendingJobs: stats.pending,
+      totalQueuedJobs: stats.queuedJobs.length,
+      capacity: {
+        used: activeJobs.size,
+        available: Math.max(
+          0,
+          config.settings.maxConcurrentJobs - activeJobs.size
+        ),
+        total: config.settings.maxConcurrentJobs,
+      },
+      queuedJobs: stats.queuedJobs,
     });
   });
 
