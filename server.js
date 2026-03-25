@@ -12,7 +12,7 @@ import { handleIssueComment } from "./src/handlers/issueComment.js";
 import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
 import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
-import { initializeDispatcher, getDispatcher, getPRStateCache } from "./src/dispatcherInstance.js";
+import { initializeDispatcher, getDispatcher, getPRStateCache, getStatusCache } from "./src/dispatcherInstance.js";
 import { ActionType } from "./src/dispatcher.js";
 import { resolveThreads } from "./src/actions/resolveThreads.js";
 import { handlePullRequestConflict } from "./src/handlers/pullRequestConflict.js";
@@ -133,19 +133,22 @@ app.post("/webhook", async (req, res) => {
 });
 
 // Setup API routes
-setupRoutes(app, rateLimiter, dispatcher);
+const statusCache = getStatusCache();
+setupRoutes(app, rateLimiter, dispatcher, statusCache);
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));
 
-// Start periodic polling for merge conflicts
+// Start periodic polling for merge conflicts and status updates
 const mergeableCheckInterval = config.settings.mergeableCheckInterval || 60000;
-let pollingTimer = null;
+const statusPollInterval = config.settings.statusPollInterval || 60000;
+let mergeablePollingTimer = null;
+let statusPollingTimer = null;
 
 function startMergeablePolling() {
-  if (pollingTimer) return; // Already running
+  if (mergeablePollingTimer) return; // Already running
 
-  pollingTimer = setInterval(async () => {
+  mergeablePollingTimer = setInterval(async () => {
     try {
       const prStateCache = getPRStateCache();
       if (!prStateCache) return;
@@ -218,6 +221,61 @@ function startMergeablePolling() {
   );
 }
 
+function startStatusPolling() {
+  if (statusPollingTimer) return; // Already running
+
+  statusPollingTimer = setInterval(async () => {
+    try {
+      const statusCache = getStatusCache();
+      const prStateCache = getPRStateCache();
+      if (!statusCache || !prStateCache) return;
+
+      // Refresh status for each configured repo
+      for (const repo of Object.keys(config.repos)) {
+        const allPRs = prStateCache.getAllOpenPRs(repo);
+        let refreshedCount = 0;
+
+        for (const pr of allPRs) {
+          try {
+            await statusCache.refresh(repo, pr.prNumber);
+            refreshedCount++;
+          } catch (err) {
+            logEvent(
+              "ERROR",
+              "status-polling",
+              repo,
+              `PR #${pr.prNumber}: ${err.message}`
+            );
+          }
+        }
+
+        if (refreshedCount > 0) {
+          logEvent(
+            "INFO",
+            "status-polling",
+            repo,
+            `Refreshed ${refreshedCount} PR statuses`
+          );
+        }
+      }
+    } catch (err) {
+      logEvent(
+        "ERROR",
+        "status-polling",
+        "system",
+        `Polling error: ${err.message}`
+      );
+    }
+  }, statusPollInterval);
+
+  logEvent(
+    "INFO",
+    "status-polling-started",
+    "system",
+    `Polling interval: ${statusPollInterval}ms`
+  );
+}
+
 function buildMergeConflictPromptForPolling(config, repo, prNumber, pr) {
   const template = config.promptTemplates?.merge_conflict;
 
@@ -262,4 +320,10 @@ app.listen(PORT, () => {
 
   // Start merge conflict polling
   startMergeablePolling();
+
+  // Start status polling
+  const enableStatusPolling = config.settings.enableStatusPolling !== false;
+  if (enableStatusPolling) {
+    startStatusPolling();
+  }
 });

@@ -357,6 +357,140 @@ class PRStateCache {
     if (!lastUpdate) return false;
     return Date.now() - lastUpdate < cooldownMs;
   }
+
+  /**
+   * Determine CI status from PR state
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {string} "passing", "pending", "failed", or null
+   */
+  determineCIStatus(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const cached = this.cache.get(cacheKey);
+    if (!cached || !cached.state) return null;
+
+    const checkStatus = cached.state.checkStatus || "pending";
+    if (checkStatus === "success") return "passing";
+    if (checkStatus === "failure") return "failed";
+    if (checkStatus === "neutral") return "neutral";
+    return "pending";
+  }
+
+  /**
+   * Determine review state from PR state
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {string} "approved", "changes_requested", "pending", or null
+   */
+  determineReviewState(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const cached = this.cache.get(cacheKey);
+    if (!cached || !cached.state) return null;
+
+    const reviewState = cached.state.reviewState || "pending";
+    if (reviewState === "approved") return "approved";
+    if (reviewState === "changes_requested") return "changes_requested";
+    if (reviewState === "commented") return "pending";
+    return "pending";
+  }
+
+  /**
+   * Determine blockers preventing merge
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {Array<Object>} Array of blocker objects with type, message, severity
+   */
+  determineBlockers(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const cached = this.cache.get(cacheKey);
+    if (!cached || !cached.state) return [];
+
+    const state = cached.state;
+    const blockers = [];
+
+    // Check draft status
+    if (state.isDraft) {
+      blockers.push({
+        type: "draft",
+        message: "PR is a draft",
+        severity: "warning",
+      });
+    }
+
+    // Check mergeable state
+    if (state.mergeable === false) {
+      blockers.push({
+        type: "conflict",
+        message: "Merge conflicts detected",
+        severity: "error",
+      });
+    }
+
+    // Check CI status
+    const checkStatus = state.checkStatus || "pending";
+    if (checkStatus === "failure") {
+      blockers.push({
+        type: "ci",
+        message: "CI checks failed",
+        severity: "error",
+      });
+    } else if (checkStatus === "pending") {
+      blockers.push({
+        type: "ci",
+        message: "CI checks pending",
+        severity: "info",
+      });
+    }
+
+    // Check review state
+    const reviewState = state.reviewState || "pending";
+    if (reviewState === "changes_requested") {
+      blockers.push({
+        type: "review",
+        message: "Changes requested by reviewer",
+        severity: "error",
+      });
+    } else if (reviewState === "pending") {
+      blockers.push({
+        type: "review",
+        message: "Pending review",
+        severity: "info",
+      });
+    }
+
+    // Check unresolved threads
+    const unresolvedCount = (state.threads || []).filter(
+      (t) => !t.isResolved
+    ).length;
+    if (unresolvedCount > 0) {
+      blockers.push({
+        type: "threads",
+        message: `${unresolvedCount} unresolved thread${unresolvedCount === 1 ? "" : "s"}`,
+        severity: "warning",
+      });
+    }
+
+    return blockers;
+  }
+
+  /**
+   * Get all open PRs cached for a repo
+   * Returns PRs regardless of base branch (unlike listOpenPRs)
+   * @param {string} repo - Repository in format owner/repo
+   * @returns {Array<Object>} Array of PR state objects
+   */
+  getAllOpenPRs(repo) {
+    const prs = [];
+    for (const [key, cached] of this.cache.entries()) {
+      if (!key.startsWith(`${repo}#`)) continue;
+
+      const state = cached.state;
+      if (state && state.prNumber) {
+        prs.push(state);
+      }
+    }
+    return prs;
+  }
 }
 
 export { PRStateCache };

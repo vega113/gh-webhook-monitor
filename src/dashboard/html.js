@@ -66,6 +66,27 @@ pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-hei
 .radio-group input:checked+span{color:#58a6ff;font-weight:600}
 .radio-group label:has(input:checked){border-color:#58a6ff;background:#161b22}
 .hint{color:#484f58;font-size:11px;margin-top:2px}
+.pr-card{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;margin-bottom:12px}
+.pr-card .pr-header{display:flex;gap:8px;align-items:baseline;margin-bottom:8px;flex-wrap:wrap}
+.pr-card .pr-number{color:#58a6ff;font-weight:600;font-size:14px}
+.pr-card .pr-title{color:#c9d1d9;flex:1;font-size:13px}
+.pr-card .status-badges{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.status-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-clean{background:#238636;color:#fff}
+.badge-passing{background:#238636;color:#fff}
+.badge-pending{background:#d29922;color:#000}
+.badge-failed{background:#f85149;color:#fff}
+.badge-approved{background:#238636;color:#fff}
+.badge-changes{background:#f85149;color:#fff}
+.badge-conflict{background:#f85149;color:#fff}
+.badge-draft{background:#d29922;color:#000}
+.pr-card .blockers{margin-top:8px;padding-top:8px;border-top:1px solid #30363d}
+.blocker-item{font-size:12px;color:#8b949e;margin:4px 0;padding-left:12px;position:relative}
+.blocker-item::before{content:'⚠';position:absolute;left:0;color:#d29922;font-size:10px}
+.blocker-item.error{color:#f85149}
+.blocker-item.error::before{content:'✕';color:#f85149}
+.blocker-item.success{color:#238636}
+.blocker-item.success::before{content:'✓';color:#238636}
 </style></head><body>
 <div class="topbar">
   <h1>Webhook Monitor</h1>
@@ -85,7 +106,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const api = async (u, o) => (await fetch(u, {headers:{'Content-Type':'application/json'},...o})).json();
 
-const TABS = ['Dashboard','Repos','Agent','Prompts','Settings','Jobs','Events','Dispatch'];
+const TABS = ['Dashboard','Status','Repos','Agent','Prompts','Settings','Jobs','Events','Dispatch'];
 let currentTab = 'Dashboard';
 
 function renderTabs() {
@@ -98,6 +119,7 @@ async function renderContent() {
   const el = $('#tabContent');
   switch(currentTab) {
     case 'Dashboard': el.innerHTML = dashboardTab(); refreshDashboard(); break;
+    case 'Status': el.innerHTML = statusTab(); refreshStatus(); break;
     case 'Repos': el.innerHTML = reposTab(cfg); break;
     case 'Agent': el.innerHTML = agentTab(cfg); break;
     case 'Prompts': el.innerHTML = promptsTab(cfg); break;
@@ -119,6 +141,56 @@ async function refreshDashboard() {
   } else { a.innerHTML = '<div class="empty">No active jobs</div>'; }
   if (e && events.length) {
     e.innerHTML = events.slice(0,15).map(ev => '<div class="ev-row"><span class="ts mono">'+esc(ev.ts)+'</span> <span class="ev">'+esc(ev.event+':'+ev.action)+'</span> '+esc(ev.repo)+' — '+esc(ev.summary)+'</div>').join('');
+  }
+}
+
+// --- Status ---
+function statusTab() {
+  return '<div class="panel"><h2>PR Status Overview</h2><p class="hint">Real-time status of all open pull requests. Auto-refreshes every 10 seconds.</p><div id="sPRs"><div class="empty">Loading...</div></div></div>';
+}
+async function refreshStatus() {
+  try {
+    const resp = await api('/api/status');
+    const statuses = resp.statuses || [];
+    const el = $('#sPRs');
+    if (!el) return;
+
+    if (!statuses.length) {
+      el.innerHTML = '<div class="empty">No open PRs cached</div>';
+      return;
+    }
+
+    el.innerHTML = statuses.map(s => {
+      const blockerHtml = (s.blockers || []).length > 0
+        ? '<div class="blockers"><strong>Blockers:</strong>' + s.blockers.map(b =>
+            '<div class="blocker-item '+(b.severity||'warning')+'">'+esc(b.message)+'</div>'
+          ).join('') + '</div>'
+        : '';
+
+      const ciClass = s.ciStatus === 'passing' ? 'badge-passing' : s.ciStatus === 'failed' ? 'badge-failed' : 'badge-pending';
+      const reviewClass = s.reviewState === 'approved' ? 'badge-approved' : s.reviewState === 'changes_requested' ? 'badge-changes' : 'badge-pending';
+      const mergeClass = s.mergeable === false ? 'badge-conflict' : s.mergeable === true ? 'badge-clean' : 'badge-pending';
+      const draftBadge = s.isDraft ? '<span class="status-badge badge-draft">DRAFT</span>' : '';
+
+      return '<div class="pr-card">'
+        + '<div class="pr-header">'
+        + '<span class="pr-number">#'+s.prNumber+'</span>'
+        + '<span class="pr-title">'+esc(s.title)+'</span>'
+        + '</div>'
+        + '<div class="status-badges">'
+        + draftBadge
+        + '<span class="status-badge '+mergeClass+'">'+esc(s.mergeable===false?'CONFLICT':s.mergeable===true?'CLEAN':'UNKNOWN')+'</span>'
+        + '<span class="status-badge '+ciClass+'">CI: '+esc(s.ciStatus || 'unknown').toUpperCase()+'</span>'
+        + '<span class="status-badge '+reviewClass+'">'+esc(s.reviewState || 'pending').toUpperCase()+'</span>'
+        + (s.unresolvedThreads > 0 ? '<span class="status-badge badge-pending">'+s.unresolvedThreads+' unresolved</span>' : '')
+        + '</div>'
+        + blockerHtml
+        + '<div class="hint" style="margin-top:6px;font-size:10px">Updated: '+esc(s.lastUpdated || 'unknown')+'</div>'
+        + '</div>';
+    }).join('');
+  } catch (err) {
+    const el = $('#sPRs');
+    if (el) el.innerHTML = '<div class="empty">Error loading status: '+esc(err.message)+'</div>';
   }
 }
 
@@ -306,6 +378,7 @@ async function tick() {
     $('#sJobs').textContent=h.activeJobs+' job'+(h.activeJobs!==1?'s':'');
   } catch { $('#sDot').className='dot red'; }
   if(currentTab==='Dashboard') refreshDashboard();
+  else if(currentTab==='Status') refreshStatus();
   else if(currentTab==='Jobs') refreshJobs();
   else if(currentTab==='Dispatch') refreshDispatch();
 }

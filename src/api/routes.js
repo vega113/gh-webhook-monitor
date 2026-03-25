@@ -6,8 +6,9 @@ import { getActiveJobs, getJobHistory } from "../actions/spawnAgent.js";
 import { setupAgentRoutes } from "./agentApi.js";
 import { setupRateLimitRoutes } from "./rateLimitApi.js";
 import { setupDispatcherRoutes } from "./dispatcherApi.js";
+import { setupStatusRoutes } from "./statusApi.js";
 
-function setupRoutes(app, rateLimiter, dispatcher) {
+function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
@@ -131,6 +132,11 @@ function setupRoutes(app, rateLimiter, dispatcher) {
   // Dispatcher routes
   if (dispatcher) {
     setupDispatcherRoutes(app, dispatcher);
+  }
+
+  // Status routes
+  if (statusCache) {
+    setupStatusRoutes(app, statusCache);
   }
 }
 
