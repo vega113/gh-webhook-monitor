@@ -133,13 +133,12 @@ async function renderContent() {
 
 // --- Dashboard ---
 function parseJobKey(key) {
-  // Parse job keys like: issue-vega113/incubator-wave-42, pr-repo-123, ci-fail-repo-hash
   const match = key.match(/^(\w+)-(.+?)(-\d+|-[a-f0-9]+)?$/);
   if (!match) return { type: 'job', display: key };
   const [, type, repoAndNum, num] = match;
-  const typeMap = { issue: '📋 Issue', pr: '🔀 PR', review: '👁️  Review', ci: '🔧 CI', conflict: '⚔️  Conflict' };
+  const typeMap = { issue: '📋 Issue', pr: '🔀 PR', review: '👁️ Review', ci: '🔧 CI', conflict: '⚔️ Conflict' };
   const displayType = typeMap[type] || type;
-  return { type: displayType, repo: repoAndNum, num: num, display: `${displayType} ${repoAndNum}${num || ''}` };
+  return { type: displayType, repo: repoAndNum, num: num, display: displayType + ' ' + repoAndNum + (num || '') };
 }
 function dashboardTab() { return '<div class="panel"><h2>Active Jobs</h2><div id="dActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Recent Events</h2><div id="dEvents"><div class="empty">No events</div></div></div>'; }
 async function refreshDashboard() {
