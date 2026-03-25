@@ -217,7 +217,7 @@ async function refreshStatus() {
 // --- Repos ---
 function reposTab(cfg) {
   let rows = Object.entries(cfg.repos).map(([n,r]) => '<tr><td class="mono">'+esc(n)+'</td><td class="mono">'+esc(r.localPath)+'</td><td><label class="toggle"><input type="checkbox" '+(r.enabled?'checked':'')+' onchange="toggleRepo(\\''+esc(n)+'\\',this.checked)"><span class="slider"></span></label></td><td><button class="danger" data-action="removeRepo" data-args="\\''+esc(n)+'\\'">Remove</button></td></tr>').join('');
-  return '<div class="panel"><h2>Monitored Repositories</h2><table><tr><th>Repository</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+rows+'</table><hr style="border-color:#30363d;margin:16px 0"><h2>Add Repository</h2><div class="row"><input id="nrName" placeholder="owner/repo" class="flex-1"><input id="nrPath" placeholder="/path/to/checkout" class="flex-1"><button onclick="addRepo()">Add</button></div></div>';
+  return '<div class="panel"><h2>Monitored Repositories</h2><table><tr><th>Repository</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+rows+'</table><hr style="border-color:#30363d;margin:16px 0"><h2>Add Repository</h2><div class="row"><input id="nrName" placeholder="owner/repo" class="flex-1"><input id="nrPath" placeholder="/path/to/checkout" class="flex-1"><button data-action="addRepo">Add</button></div></div>';
 }
 async function addRepo() { await api('/api/repos',{method:'POST',body:JSON.stringify({name:$('#nrName').value.trim(),localPath:$('#nrPath').value.trim()})}); renderContent(); }
 async function removeRepo(n) { if(!confirm('Remove '+n+'?'))return; await fetch('/api/repos/'+n,{method:'DELETE'}); renderContent(); }
@@ -236,7 +236,7 @@ function agentTab(cfg) {
   return '<div class="panel"><h2>Default Agent Type</h2><div class="row"><div class="radio-group">'
     + radioBtn('agentType','claude','Claude Code',ac.defaultAgent==='claude')
     + radioBtn('agentType','codex','Codex CLI',ac.defaultAgent==='codex')
-    + '</div></div><button onclick="saveDefaultAgent()">Save Default</button></div>'
+    + '</div></div><button data-action="saveDefaultAgent">Save Default</button></div>'
     + '<div class="panel"><h2>Per-Repository Overrides</h2><table><tr><th>Repository</th><th>Agent</th><th></th></tr>'+repoRows+'</table></div>'
     + '<div class="panel" id="claudeCfg" style="display:'+(a.type==='claude'?'block':'none')+'"><h2>Claude Code Settings</h2>'
     + field('Claude CLI path','cBin',a.claude.bin,'claude')
@@ -294,7 +294,7 @@ function promptsTab(cfg) {
   for (const [key, tpl] of Object.entries(tpls)) {
     html += '<h2 style="margin-top:16px">'+esc(key)+'</h2><div class="hint">Variables: '+esc(vars[key]||'')+'</div><textarea id="tpl_'+key+'" rows="5">'+esc(tpl)+'</textarea>';
   }
-  html += '<button style="margin-top:12px" onclick="savePrompts()">Save All Templates</button></div>';
+  html += '<button style="margin-top:12px" data-action="savePrompts">Save All Templates</button></div>';
   return html;
 }
 async function savePrompts() {
@@ -498,30 +498,51 @@ document.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const action = btn.getAttribute('data-action');
-  const args = btn.getAttribute('data-args');
-  if (action === 'killJob' && args) {
-    await killJob(args.replace(/['"]+/g, ''));
-  } else if (action === 'removeRepo' && args) {
-    await removeRepo(args.replace(/['"]+/g, ''));
-  } else if (action === 'saveRepoAgent' && args) {
-    await saveRepoAgent(args.replace(/['"]+/g, ''));
+
+  if (action === 'switchTab') {
+    const tab = btn.getAttribute('data-tab');
+    if (tab) switchTab(tab);
+  } else if (action === 'addRepo') {
+    await addRepo();
+  } else if (action === 'saveDefaultAgent') {
+    await saveDefaultAgent();
+  } else if (action === 'saveAgent') {
+    const agent = btn.getAttribute('data-agent');
+    if (agent) await saveAgent(agent);
+  } else if (action === 'savePrompts') {
+    await savePrompts();
+  } else if (action === 'saveSetting') {
+    const setting = btn.getAttribute('data-setting');
+    const input = btn.getAttribute('data-input');
+    if (setting && input) await saveSetting(setting, $(input).value);
+  } else if (action === 'killJob') {
+    const args = btn.getAttribute('data-args');
+    if (args) await killJob(args.replace(/['"]+/g, ''));
+  } else if (action === 'removeRepo') {
+    const repo = btn.getAttribute('data-repo');
+    if (repo) await removeRepo(repo);
+  } else if (action === 'saveRepoAgent') {
+    const repo = btn.getAttribute('data-repo');
+    if (repo) await saveRepoAgent(repo);
   } else if (action === 'removeTag') {
-    const [key, val] = args.split('|');
-    await removeTag(key.replace(/['"]+/g, ''), val.replace(/['"]+/g, ''));
+    const key = btn.getAttribute('data-key');
+    const val = btn.getAttribute('data-val');
+    if (key && val) await removeTag(key, val);
   } else if (action === 'addTag') {
-    const inputId = args.replace(/['"]+/g, '');
-    await addTag(inputId.split('|')[0], inputId.split('|')[1]);
+    const key = btn.getAttribute('data-key');
+    const input = btn.getAttribute('data-input');
+    if (key && input) await addTag(key, input);
   } else if (action === 'expandLog') {
     const rowId = btn.getAttribute('data-rowid');
     const logId = btn.getAttribute('data-logid');
     const logfile = btn.getAttribute('data-logfile');
-    await expandLog(rowId, logId, logfile);
+    if (rowId && logId && logfile) await expandLog(rowId, logId, logfile);
   } else if (action === 'viewLog') {
     const logfile = btn.getAttribute('data-logfile');
-    viewLog(logfile);
+    if (logfile) viewLog(logfile);
   } else if (action === 'viewOutput') {
     const jobkey = btn.getAttribute('data-jobkey');
-    viewOutput(jobkey);
+    if (jobkey) viewOutput(jobkey);
   }
 }, true);
 
