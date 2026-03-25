@@ -2,7 +2,8 @@ import { getConfig, getRepoPath } from "../config.js";
 import { logEvent } from "../logger.js";
 import { renderPrompt } from "../prompts.js";
 import { spawnAgent } from "../actions/spawnAgent.js";
-import { isOnCooldown, setCooldown, hasLabel, AGENT_PR_LABEL } from "./utils.js";
+import { hasLabel, AGENT_PR_LABEL } from "./utils.js";
+import { getRateLimiter } from "../rateLimiterInstance.js";
 
 function handlePullRequestReview(payload) {
   const config = getConfig();
@@ -33,9 +34,12 @@ function handlePullRequestReview(payload) {
     return;
   }
 
-  const jobKey = `review-${repo}-${pr.number}`;
-  if (isOnCooldown(jobKey)) {
-    logEvent("SKIP", "cooldown", repo, jobKey);
+  const rateLimiter = getRateLimiter();
+  const actionType = "spawnAgent";
+
+  // Check rate limit
+  if (!rateLimiter.canExecute(pr.number, actionType)) {
+    logEvent("SKIP", "rate-limited", repo, `PR #${pr.number}-${actionType}`);
     return;
   }
 
@@ -47,7 +51,8 @@ function handlePullRequestReview(payload) {
     repo,
   });
 
-  setCooldown(jobKey);
+  const jobKey = `review-${repo}-${pr.number}`;
+  rateLimiter.recordExecution(pr.number, actionType);
   spawnAgent(repoPath, prompt, jobKey, repo);
 }
 

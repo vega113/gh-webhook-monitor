@@ -52,7 +52,14 @@
       "github-actions[bot]",
       "dependabot[bot]"
     ],
-    "claudeBin": "claude"
+    "claudeBin": "claude",
+    "rateLimits": {
+      "updateBranchInterval": 60,
+      "rerunGateInterval": 120,
+      "resolveThreadsInterval": 30,
+      "spawnAgentInterval": 300,
+      "batchWindowMs": 5000
+    }
   },
   "promptTemplates": {
     "pull_request_review": "A review was submitted on PR #{{prNumber}} (\"{{prTitle}}\") by {{reviewer}} (state: {{reviewState}}).\nRead the review comments with `gh pr view {{prNumber}} --comments` and `gh api repos/{{repo}}/pulls/{{prNumber}}/comments`.\nIf there are actionable code review comments, fix them, commit, and push. If the comments are just informational or approvals, do nothing. Be concise.",

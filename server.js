@@ -9,12 +9,17 @@ import { handlePullRequest } from "./src/handlers/pullRequest.js";
 import { handleIssueComment } from "./src/handlers/issueComment.js";
 import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
+import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
 // Initialize config
 loadConfig();
 const config = getConfig();
+
+// Initialize rate limiter
+initializeRateLimiter();
+const rateLimiter = getRateLimiter();
 
 // Create Express app
 const app = express();
@@ -59,7 +64,7 @@ app.post("/webhook", (req, res) => {
 });
 
 // Setup API routes
-setupRoutes(app);
+setupRoutes(app, rateLimiter);
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));

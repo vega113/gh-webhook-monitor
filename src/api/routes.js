@@ -4,8 +4,9 @@ import { getConfig, setConfig, getRepoPath } from "../config.js";
 import { getEventLog, getLogDir } from "../logger.js";
 import { getActiveJobs, getJobHistory } from "../actions/spawnAgent.js";
 import { setupAgentRoutes } from "./agentApi.js";
+import { setupRateLimitRoutes } from "./rateLimitApi.js";
 
-function setupRoutes(app) {
+function setupRoutes(app, rateLimiter) {
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
@@ -120,6 +121,11 @@ function setupRoutes(app) {
 
   // Agent routes
   setupAgentRoutes(app);
+
+  // Rate limit routes
+  if (rateLimiter) {
+    setupRateLimitRoutes(app, rateLimiter);
+  }
 }
 
 export { setupRoutes };

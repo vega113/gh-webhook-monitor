@@ -5,6 +5,7 @@ import { spawnAgent } from "../actions/spawnAgent.js";
 import { spawnAgentWithReaction } from "../actions/spawnAgentWithReaction.js";
 import { reactToComment } from "../actions/reactions.js";
 import { isOnCooldown, setCooldown } from "./utils.js";
+import { getRateLimiter } from "../rateLimiterInstance.js";
 
 function handleIssueComment(payload) {
   const config = getConfig();
@@ -31,6 +32,16 @@ function handleIssueComment(payload) {
   if (issue.pull_request) {
     // PR comment — only react to trigger keywords
     if (!hasTrigger) return;
+
+    const rateLimiter = getRateLimiter();
+    const actionType = "spawnAgent";
+
+    // Check rate limit
+    if (!rateLimiter.canExecute(issue.number, actionType)) {
+      logEvent("SKIP", "rate-limited", repo, `PR #${issue.number}-${actionType}`);
+      return;
+    }
+
     const jobKey = `comment-${repo}-${issue.number}-${comment.id}`;
     const prompt = renderPrompt("issue_comment", {
       prNumber: issue.number,
@@ -39,6 +50,7 @@ function handleIssueComment(payload) {
       body: comment.body.slice(0, 500),
       repo,
     });
+    rateLimiter.recordExecution(issue.number, actionType);
     spawnAgent(repoPath, prompt, jobKey, repo);
   } else {
     // Issue comment — react if the issue has agent-task label OR comment has trigger keyword
