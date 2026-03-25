@@ -1,0 +1,7 @@
+tunnel: ae006431-3099-4118-964b-a28243d4b20c
+credentials-file: /Users/vega/.cloudflared/ae006431-3099-4118-964b-a28243d4b20c.json
+
+ingress:
+  - hostname: gh-webhook.tubescribes.com
+    service: http://localhost:3847
+  - service: http_status:404

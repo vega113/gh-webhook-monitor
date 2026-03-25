@@ -1,0 +1,65 @@
+{
+  "repos": {
+    "vega113/incubator-wave": {
+      "localPath": "/Users/vega/devroot/incubator-wave",
+      "enabled": true
+    },
+    "vega113/tubescribes": {
+      "localPath": "/Users/vega/devroot/tubescribes",
+      "enabled": true
+    },
+    "vega113/tube2web": {
+      "localPath": "/Users/vega/devroot/tube2web",
+      "enabled": true
+    }
+  },
+  "agent": {
+    "type": "claude",
+    "claude": {
+      "bin": "claude",
+      "model": "",
+      "allowedTools": "",
+      "extraArgs": "--dangerously-skip-permissions"
+    },
+    "codex": {
+      "bin": "codex",
+      "model": "gpt-5.3-codex",
+      "reasoningEffort": "high",
+      "sandbox": "workspace-write",
+      "extraArgs": "--full-auto"
+    }
+  },
+  "settings": {
+    "webhookSecret": "e3cffef5ee13192b113c4d8d82593cf5d6312ae2b9022df0de6bb970b0514ab8",
+    "maxConcurrentJobs": 10,
+    "jobTimeoutMinutes": 20,
+    "enabledEvents": {
+      "pull_request_review": true,
+      "check_suite": true,
+      "issues": true,
+      "issue_comment": true,
+      "pull_request": true
+    },
+    "triggerKeywords": [
+      "@claude",
+      "please fix"
+    ],
+    "issueLabels": [
+      "deploy-failure",
+      "auto-fix"
+    ],
+    "ignoredBots": [
+      "github-actions[bot]",
+      "dependabot[bot]"
+    ],
+    "claudeBin": "claude"
+  },
+  "promptTemplates": {
+    "pull_request_review": "A review was submitted on PR #{{prNumber}} (\"{{prTitle}}\") by {{reviewer}} (state: {{reviewState}}).\nRead the review comments with `gh pr view {{prNumber}} --comments` and `gh api repos/{{repo}}/pulls/{{prNumber}}/comments`.\nIf there are actionable code review comments, fix them, commit, and push. If the comments are just informational or approvals, do nothing. Be concise.",
+    "check_suite": "CI failed on the default branch ({{branch}}) at commit {{sha}}.\nCheck the failure with `gh run list --limit 3` and `gh run view --log-failed`.\nInvestigate the failure, fix if possible, commit and push. If it's a flaky test or infrastructure issue, report what you found.",
+    "issues": "GitHub issue #{{issueNumber}} (\"{{issueTitle}}\") was {{action}} with labels: {{labels}}.\nRead the issue with `gh issue view {{issueNumber}}`.\nIf it's a deploy failure, investigate the deploy logs and fix the issue. If it's tagged auto-fix, investigate and fix the reported bug.",
+    "issue_comment": "A comment was posted on PR #{{prNumber}} (\"{{prTitle}}\") by {{author}}: \"{{body}}\".\nRead the full PR context with `gh pr view {{prNumber}}`.\nAddress what's being asked — fix code issues, respond to questions, etc. Commit and push if code changes are needed.",
+    "agent_task": "GitHub issue #{{issueNumber}} (\"{{issueTitle}}\") was created as an agent task.\nLabels: {{labels}}\n\nIssue description:\n{{issueBody}}\n\nInstructions:\n1. Read the full issue with `gh issue view {{issueNumber}}`\n2. Investigate the codebase as needed\n3. Implement the requested changes\n4. Create a PR with the fix/feature, adding the label \"agent-authored\"\n5. Reference the issue in the PR body: \"Fixes #{{issueNumber}}\" or \"Addresses #{{issueNumber}}\"\n6. Post a comment on the issue summarizing what was done: `gh issue comment {{issueNumber}} --body \"...\"`",
+    "issue_followup": "A follow-up comment was posted on issue #{{issueNumber}} (\"{{issueTitle}}\") by {{author}}: \"{{body}}\"\nLabels: {{labels}}\n\nRead the full issue and comment thread with `gh issue view {{issueNumber}} --comments`.\nIf the comment asks for additional changes or clarifications on work already done, address them.\nIf there's an open PR for this issue, update it. Otherwise create a new PR if code changes are needed.\nPost a comment on the issue summarizing what was done."
+  }
+}

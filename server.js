@@ -477,7 +477,12 @@ function dashboardHTML() {
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Webhook Monitor</title>
+<meta name="theme-color" content="#0969da">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GH Webhook">
 <link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/favicon-192.png">
 <link rel="manifest" href="/manifest.json">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}

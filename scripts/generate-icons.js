@@ -19,7 +19,7 @@ async function generateIcons() {
 
     console.log('Generating PNG icons...');
     for (const size of sizes) {
-      const outputPath = join(publicDir, `icon-${size}.png`);
+      const outputPath = join(publicDir, `favicon-${size}.png`);
       await sharp(svgBuffer)
         .resize(size, size, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
         .png()
@@ -30,7 +30,7 @@ async function generateIcons() {
     console.log('Generating favicon.ico...');
     // Create favicon.ico by copying the 32x32 PNG as ICO
     // Most modern browsers accept PNG as favicon
-    const faviconPngPath = join(publicDir, 'favicon.png');
+    const faviconPngPath = join(publicDir, 'favicon-32.png');
     const faviconIcoPath = join(publicDir, 'favicon.ico');
 
     // Copy the PNG as .ico (browsers understand both)
@@ -40,7 +40,7 @@ async function generateIcons() {
 
     console.log('\nAll icons generated successfully!');
     console.log('Generated files:');
-    sizes.forEach(size => console.log(`  - public/icon-${size}.png`));
+    sizes.forEach(size => console.log(`  - public/favicon-${size}.png`));
     console.log('  - public/favicon.ico');
   } catch (error) {
     console.error('Error generating icons:', error);
