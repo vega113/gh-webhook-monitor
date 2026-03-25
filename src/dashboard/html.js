@@ -132,13 +132,25 @@ async function renderContent() {
 }
 
 // --- Dashboard ---
+function parseJobKey(key) {
+  // Parse job keys like: issue-vega113/incubator-wave-42, pr-repo-123, ci-fail-repo-hash
+  const match = key.match(/^(\w+)-(.+?)(-\d+|-[a-f0-9]+)?$/);
+  if (!match) return { type: 'job', display: key };
+  const [, type, repoAndNum, num] = match;
+  const typeMap = { issue: '📋 Issue', pr: '🔀 PR', review: '👁️  Review', ci: '🔧 CI', conflict: '⚔️  Conflict' };
+  const displayType = typeMap[type] || type;
+  return { type: displayType, repo: repoAndNum, num: num, display: `${displayType} ${repoAndNum}${num || ''}` };
+}
 function dashboardTab() { return '<div class="panel"><h2>Active Jobs</h2><div id="dActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Recent Events</h2><div id="dEvents"><div class="empty">No events</div></div></div>'; }
 async function refreshDashboard() {
   const [jobs, events] = await Promise.all([api('/api/jobs'), api('/api/events')]);
   const a = $('#dActive'); const e = $('#dEvents');
   if (!a) return;
   if (jobs.active.length) {
-    a.innerHTML = jobs.active.map(j => '<div class="job-card"><div class="key">'+esc(j.key)+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | '+j.running+'</div><div class="live-output"><pre class="log">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>').join('');
+    a.innerHTML = jobs.active.map(j => {
+      const parsed = parseJobKey(j.key);
+      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | '+j.running+'</div><div class="live-output"><pre class="log">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>';
+    }).join('');
   } else { a.innerHTML = '<div class="empty">No active jobs</div>'; }
   if (e && events.length) {
     e.innerHTML = events.slice(0,15).map(ev => '<div class="ev-row"><span class="ts mono">'+esc(ev.ts)+'</span> <span class="ev">'+esc(ev.event+':'+ev.action)+'</span> '+esc(ev.repo)+' — '+esc(ev.summary)+'</div>').join('');
@@ -334,7 +346,10 @@ async function refreshJobs() {
   const q = $('#jQueue');
   if(q) {
     if(d.pending && d.pending.length) {
-      q.innerHTML = d.pending.map((j,i) => '<div class="job-card" style="opacity:0.8"><div class="key" style="color:#d29922">Queue #'+(i+1)+' — '+esc(j.jobKey)+'</div><div class="meta">Queued: '+esc(new Date(j.queuedAt).toLocaleTimeString())+' | Repo: '+esc(j.repoFullName)+'</div></div>').join('');
+      q.innerHTML = d.pending.map((j,i) => {
+        const parsed = parseJobKey(j.jobKey);
+        return '<div class="job-card" style="opacity:0.8"><div class="key" style="color:#d29922;font-size:14px;font-weight:600">⏳ Queue #'+(i+1)+' — '+parsed.display+'</div><div class="meta">Queued: '+esc(new Date(j.queuedAt).toLocaleTimeString())+' | Repo: '+esc(j.repoFullName)+'</div></div>';
+      }).join('');
     } else { q.innerHTML='<div class="empty">No pending jobs</div>'; }
   }
 
@@ -342,7 +357,10 @@ async function refreshJobs() {
   const a = $('#jActive');
   if(!a) return;
   if(d.active.length) {
-    a.innerHTML = d.active.map(j => '<div class="job-card"><div class="key">'+esc(j.key)+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | Running '+j.running+'</div><div class="live-output"><pre class="log" style="max-height:200px">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>').join('');
+    a.innerHTML = d.active.map(j => {
+      const parsed = parseJobKey(j.key);
+      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | Running '+j.running+'</div><div class="live-output"><pre class="log" style="max-height:200px">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>';
+    }).join('');
   } else { a.innerHTML='<div class="empty">No active jobs</div>'; }
 
   // History
