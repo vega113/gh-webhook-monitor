@@ -10,6 +10,7 @@ import { handleIssueComment } from "./src/handlers/issueComment.js";
 import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
 import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
+import { initializeDispatcher, getDispatcher } from "./src/dispatcherInstance.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -21,6 +22,10 @@ const config = getConfig();
 initializeRateLimiter();
 const rateLimiter = getRateLimiter();
 
+// Initialize dispatcher
+initializeDispatcher();
+const dispatcher = getDispatcher();
+
 // Create Express app
 const app = express();
 app.use(express.json({ verify: (req, _res, buf) => (req.rawBody = buf) }));
@@ -28,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 // Webhook endpoint
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
   if (!verifySignature(req.rawBody, req.headers["x-hub-signature-256"])) {
     logEvent("REJECT", "bad-sig", "unknown", "");
     return res.status(401).send("Bad signature");
@@ -40,6 +45,15 @@ app.post("/webhook", (req, res) => {
 
   logEvent(event, payload.action || "", repo, "received");
 
+  // Use dispatcher to decide what to do
+  const actions = await dispatcher.receive({
+    type: event,
+    payload,
+  });
+
+  // Execute handlers based on dispatcher decision
+  // For now, still call handlers directly - they contain business logic
+  // The dispatcher tracks decisions for audit/debugging
   switch (event) {
     case "pull_request_review":
       handlePullRequestReview(payload);
@@ -64,7 +78,7 @@ app.post("/webhook", (req, res) => {
 });
 
 // Setup API routes
-setupRoutes(app, rateLimiter);
+setupRoutes(app, rateLimiter, dispatcher);
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));

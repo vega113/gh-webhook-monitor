@@ -85,7 +85,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const api = async (u, o) => (await fetch(u, {headers:{'Content-Type':'application/json'},...o})).json();
 
-const TABS = ['Dashboard','Repos','Agent','Prompts','Settings','Jobs','Events'];
+const TABS = ['Dashboard','Repos','Agent','Prompts','Settings','Jobs','Events','Dispatch'];
 let currentTab = 'Dashboard';
 
 function renderTabs() {
@@ -104,6 +104,7 @@ async function renderContent() {
     case 'Settings': el.innerHTML = settingsTab(cfg); break;
     case 'Jobs': el.innerHTML = jobsTab(); refreshJobs(); break;
     case 'Events': el.innerHTML = eventsTab(); refreshEvents(); break;
+    case 'Dispatch': el.innerHTML = dispatchTab(); refreshDispatch(); break;
   }
 }
 
@@ -265,6 +266,32 @@ async function refreshEvents() {
   el.innerHTML = ev.map(e => '<div class="ev-row"><span class="ts mono">'+esc(e.ts)+'</span> <span class="ev">'+esc(e.event+':'+e.action)+'</span> '+esc(e.repo)+' — '+esc(e.summary)+'</div>').join('');
 }
 
+// --- Dispatch ---
+function dispatchTab() {
+  return '<div class="panel"><h2>Dispatcher Statistics</h2><div id="dStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Recent Decisions</h2><div id="dRecent"><div class="empty">No decisions</div></div></div>';
+}
+async function refreshDispatch() {
+  try {
+    const [stats, decisions] = await Promise.all([api('/api/dispatch-stats'), api('/api/dispatch-history?limit=30')]);
+    const sEl = $('#dStats'), rEl = $('#dRecent');
+    if (!sEl || !rEl) return;
+    let statsHtml = '<table><tr><th>Metric</th><th>Value</th></tr>';
+    statsHtml += '<tr><td>History Size</td><td>'+stats.historySize+' / '+stats.maxHistorySize+'</td></tr>';
+    Object.entries(stats.actionCounts||{}).forEach(([action, count]) => {
+      statsHtml += '<tr><td>'+esc(action)+'</td><td>'+count+'</td></tr>';
+    });
+    statsHtml += '</table>';
+    sEl.innerHTML = statsHtml;
+    if (decisions.count > 0) {
+      rEl.innerHTML = decisions.decisions.map(d => '<div class="ev-row"><span class="ts mono">'+esc(d.timestamp)+'</span> '+esc(d.repo)+' #'+d.prRef+' <span class="ev">'+esc(d.event)+'</span> → '+esc(d.actions.join(', '))+'</div>').join('');
+    } else {
+      rEl.innerHTML = '<div class="empty">No decisions</div>';
+    }
+  } catch (e) {
+    console.error('Error loading dispatch data:', e);
+  }
+}
+
 function esc(s) { const d=document.createElement('div'); d.textContent=String(s||''); return d.innerHTML; }
 
 // --- Health bar + auto-refresh ---
@@ -278,6 +305,7 @@ async function tick() {
   } catch { $('#sDot').className='dot red'; }
   if(currentTab==='Dashboard') refreshDashboard();
   else if(currentTab==='Jobs') refreshJobs();
+  else if(currentTab==='Dispatch') refreshDispatch();
 }
 function fmt(s){if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m';return Math.floor(s/86400)+'d';}
 

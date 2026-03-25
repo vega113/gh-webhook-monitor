@@ -5,8 +5,9 @@ import { getEventLog, getLogDir } from "../logger.js";
 import { getActiveJobs, getJobHistory } from "../actions/spawnAgent.js";
 import { setupAgentRoutes } from "./agentApi.js";
 import { setupRateLimitRoutes } from "./rateLimitApi.js";
+import { setupDispatcherRoutes } from "./dispatcherApi.js";
 
-function setupRoutes(app, rateLimiter) {
+function setupRoutes(app, rateLimiter, dispatcher) {
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
@@ -125,6 +126,11 @@ function setupRoutes(app, rateLimiter) {
   // Rate limit routes
   if (rateLimiter) {
     setupRateLimitRoutes(app, rateLimiter);
+  }
+
+  // Dispatcher routes
+  if (dispatcher) {
+    setupDispatcherRoutes(app, dispatcher);
   }
 }
 
