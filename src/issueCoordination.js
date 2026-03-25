@@ -72,11 +72,10 @@ function getIssueAssignees(repo, issueNumber) {
  */
 function assignIssueToBot(repo, issueNumber, botLogin) {
   try {
-    // Use JSON.stringify to safely pass botLogin as argument instead of string interpolation
-    // This prevents shell injection vulnerabilities
-    const assigneesJson = JSON.stringify([botLogin]);
+    // Use PATCH with proper JSON body for assignees
+    const body = JSON.stringify({ assignees: [botLogin] });
     execSync(
-      `gh api repos/${repo}/issues/${issueNumber} -f assignees='${assigneesJson}'`,
+      `echo ${JSON.stringify(body)} | gh api repos/${repo}/issues/${issueNumber} --input -`,
       { encoding: "utf-8" }
     );
     logEvent("COORD", "assigned", repo, `Issue #${issueNumber} -> ${botLogin}`);
@@ -99,8 +98,9 @@ function assignIssueToBot(repo, issueNumber, botLogin) {
  */
 function unassignIssue(repo, issueNumber) {
   try {
+    const body = JSON.stringify({ assignees: [] });
     execSync(
-      `gh api repos/${repo}/issues/${issueNumber} -f assignees='[]'`,
+      `echo ${JSON.stringify(body)} | gh api repos/${repo}/issues/${issueNumber} --input -`,
       { encoding: "utf-8" }
     );
     logEvent("COORD", "unassigned", repo, `Issue #${issueNumber}`);
@@ -154,8 +154,9 @@ function getAndUpdateLabel(repo, issueNumber, labelName, action) {
 
     // Only update if labels changed
     if (updatedLabels.length !== labels.length || updatedLabels.some((l, i) => l !== labels[i])) {
+      const body = JSON.stringify({ labels: updatedLabels });
       execSync(
-        `gh api repos/${repo}/issues/${issueNumber} -f labels='${JSON.stringify(updatedLabels)}'`,
+        `echo ${JSON.stringify(body)} | gh api repos/${repo}/issues/${issueNumber} --input -`,
         { encoding: "utf-8" }
       );
     }
