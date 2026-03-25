@@ -404,7 +404,7 @@ async function refreshJobs() {
   if(h && d.history.length) {
     h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+d.history.map(j => {
       const fname = (j.logFile||'').split('/').pop();
-      return '<tr><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td><button class="secondary" data-action="viewLog" data-args="\\''+esc(fname)+'\\'">Log</button> <button class="secondary" onclick="viewOutput(\\''+esc(j.key)+'\\')">Output</button></td></tr>';
+      return '<tr><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td><button class="secondary" data-action="viewLog" data-logfile="'+esc(fname)+'">Log</button> <button class="secondary" data-action="viewOutput" data-jobkey="'+esc(j.key)+'">Output</button></td></tr>';
     }).join('')+'</table>';
   }
 }
@@ -492,9 +492,11 @@ document.addEventListener('click', async (e) => {
     const inputId = args.replace(/['"]+/g, '');
     await addTag(inputId.split('|')[0], inputId.split('|')[1]);
   } else if (action === 'viewLog') {
-    viewLog(args.replace(/['"]+/g, ''));
+    const logfile = btn.getAttribute('data-logfile');
+    viewLog(logfile);
   } else if (action === 'viewOutput') {
-    viewOutput(args.replace(/['"]+/g, ''));
+    const jobkey = btn.getAttribute('data-jobkey');
+    viewOutput(jobkey);
   }
 }, true);
 
