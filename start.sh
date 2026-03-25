@@ -9,6 +9,9 @@ if [[ -f .env ]]; then
   set -a; source .env; set +a
 fi
 
+# launchd provides a minimal PATH; ensure user-installed CLIs remain available.
+export PATH="$HOME/.local/bin:$PATH"
+
 # Start named cloudflared tunnel in background
 cloudflared tunnel --config "$SCRIPT_DIR/tunnel-config.yml" run gh-webhook &
 TUNNEL_PID=$!

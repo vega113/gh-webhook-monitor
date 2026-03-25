@@ -110,6 +110,7 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     `${jobKey.replace(/[^a-zA-Z0-9-_]/g, "_")}-${startTime}.log`
   );
   const outputChunks = [];
+  let settled = false;
 
   const child = spawn(bin, args, {
     cwd: repoPath,
@@ -155,12 +156,14 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     }
   }, config.settings.jobTimeoutMinutes * 60 * 1000);
 
-  child.on("close", (code) => {
+  function finalizeJob(code, detail) {
+    if (settled) return;
+    settled = true;
     clearTimeout(timeout);
     activeJobs.delete(jobKey);
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const fullOutput = outputChunks.join("");
-    logEvent("DONE", `exit=${code}`, jobKey, `${duration}s`);
+    logEvent("DONE", detail || `exit=${code}`, jobKey, `${duration}s`);
     jobHistory.unshift({
       key: jobKey,
       code,
@@ -176,6 +179,16 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
 
     // Try to dequeue and spawn next job
     processQueue();
+  }
+
+  child.on("error", (error) => {
+    appendFileSync(logFile, `[spawn-error] ${error.stack || error.message}\n`);
+    logEvent("ERROR", "spawn", jobKey, error.message);
+    finalizeJob(127, `spawn-error=${error.code || "unknown"}`);
+  });
+
+  child.on("close", (code) => {
+    finalizeJob(code, `exit=${code}`);
   });
 }
 

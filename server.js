@@ -9,6 +9,7 @@ import { handleIssues } from "./src/handlers/issues.js";
 import { handlePullRequest } from "./src/handlers/pullRequest.js";
 import { handlePullRequestMerge } from "./src/handlers/pullRequestMerge.js";
 import { handleIssueComment } from "./src/handlers/issueComment.js";
+import { handlePing } from "./src/handlers/ping.js";
 import { setupRoutes } from "./src/api/routes.js";
 import { getDashboardHTML } from "./src/dashboard/html.js";
 import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance.js";
@@ -129,6 +130,9 @@ app.post("/webhook", async (req, res) => {
       break;
     case "issue_comment":
       handleIssueComment(payload);
+      break;
+    case "ping":
+      handlePing(payload);
       break;
     default:
       logEvent(event, payload.action || "", repo, "unhandled");
