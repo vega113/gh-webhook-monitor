@@ -402,14 +402,34 @@ async function refreshJobs() {
   // History
   const h = $('#jHist');
   if(h && d.history.length) {
-    h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+d.history.map(j => {
+    const rows = d.history.map((j,i) => {
       const fname = (j.logFile||'').split('/').pop();
-      return '<tr><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td><button class="secondary" data-action="viewLog" data-logfile="'+esc(fname)+'">Log</button> <button class="secondary" data-action="viewOutput" data-jobkey="'+esc(j.key)+'">Output</button></td></tr>';
-    }).join('')+'</table>';
+      const rowId = 'jrow-'+i;
+      const logId = 'jlog-'+i;
+      return '<tr id="'+rowId+'"><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td style="white-space:nowrap"><button class="secondary" data-action="expandLog" data-rowid="'+rowId+'" data-logid="'+logId+'" data-logfile="'+esc(fname)+'">📄 Log</button> <button class="secondary" data-action="viewOutput" data-jobkey="'+esc(j.key)+'">📋 Output</button></td></tr>'
+        + '<tr id="'+logId+'" style="display:none"><td colspan="6" style="padding:0"><div style="background:#0d1117;padding:16px;border-left:3px solid #58a6ff;font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word" id="log-'+i+'">Loading...</div></td></tr>';
+    }).join('');
+    h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+rows+'</table>';
   }
 }
 async function killJob(k) { await api('/api/jobs/'+encodeURIComponent(k)+'/kill',{method:'POST'}); setTimeout(()=>{if(currentTab==='Jobs')refreshJobs();else refreshDashboard();},1000); }
 async function viewLog(f) { $('#logPanel').style.display='block'; const r=await fetch('/api/logs/'+f); $('#logOut').textContent=await r.text(); }
+async function expandLog(rowId, logId, logfile) {
+  const logRow = $(logId);
+  const isVisible = logRow.style.display !== 'none';
+  if(isVisible) {
+    logRow.style.display = 'none';
+  } else {
+    const contentDiv = $('#log-'+logId.split('-')[1]);
+    try {
+      const r = await fetch('/api/logs/'+encodeURIComponent(logfile));
+      contentDiv.textContent = await r.text();
+    } catch(e) {
+      contentDiv.textContent = 'Error loading log: '+e.message;
+    }
+    logRow.style.display = 'table-row';
+  }
+}
 function viewOutput(key) {
   const d = jobHistory_cache?.find(j=>j.key===key);
   if(d?.outputTail) { $('#logPanel').style.display='block'; $('#logOut').textContent=d.outputTail; }
@@ -491,6 +511,11 @@ document.addEventListener('click', async (e) => {
   } else if (action === 'addTag') {
     const inputId = args.replace(/['"]+/g, '');
     await addTag(inputId.split('|')[0], inputId.split('|')[1]);
+  } else if (action === 'expandLog') {
+    const rowId = btn.getAttribute('data-rowid');
+    const logId = btn.getAttribute('data-logid');
+    const logfile = btn.getAttribute('data-logfile');
+    await expandLog(rowId, logId, logfile);
   } else if (action === 'viewLog') {
     const logfile = btn.getAttribute('data-logfile');
     viewLog(logfile);
