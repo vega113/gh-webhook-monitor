@@ -134,7 +134,8 @@ async function renderContent() {
 
 // --- Dashboard ---
 function parseJobKey(key) {
-  const match = key.match(/^(\w+)-(.+?)(-\d+|-[a-f0-9]+)?$/);
+  const rxPattern = '^([a-zA-Z0-9]+)-(.+?)(-[0-9]+|-[a-f0-9]+)?$';
+  const match = key.match(new RegExp(rxPattern));
   if (!match) return { type: 'job', display: key };
   const [, type, repoAndNum, num] = match;
   const typeMap = { issue: '📋 Issue', pr: '🔀 PR', review: '👁️ Review', ci: '🔧 CI', conflict: '⚔️ Conflict' };
@@ -155,7 +156,7 @@ async function refreshDashboard() {
   if (jobs.active.length) {
     a.innerHTML = jobs.active.map(j => {
       const parsed = parseJobKey(j.key);
-      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | '+j.running+'</div><div class="live-output"><pre class="log">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>';
+      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | '+j.running+'</div><div class="live-output"><pre class="log">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" data-action="killJob" data-args="\\''+esc(j.key)+'\\'">Kill</button></div>';
     }).join('');
   } else { a.innerHTML = '<div class="empty">No active jobs</div>'; }
   if (e && events.length) {
@@ -215,7 +216,7 @@ async function refreshStatus() {
 
 // --- Repos ---
 function reposTab(cfg) {
-  let rows = Object.entries(cfg.repos).map(([n,r]) => '<tr><td class="mono">'+esc(n)+'</td><td class="mono">'+esc(r.localPath)+'</td><td><label class="toggle"><input type="checkbox" '+(r.enabled?'checked':'')+' onchange="toggleRepo(\\''+esc(n)+'\\',this.checked)"><span class="slider"></span></label></td><td><button class="danger" onclick="removeRepo(\\''+esc(n)+'\\')">Remove</button></td></tr>').join('');
+  let rows = Object.entries(cfg.repos).map(([n,r]) => '<tr><td class="mono">'+esc(n)+'</td><td class="mono">'+esc(r.localPath)+'</td><td><label class="toggle"><input type="checkbox" '+(r.enabled?'checked':'')+' onchange="toggleRepo(\\''+esc(n)+'\\',this.checked)"><span class="slider"></span></label></td><td><button class="danger" data-action="removeRepo" data-args="\\''+esc(n)+'\\'">Remove</button></td></tr>').join('');
   return '<div class="panel"><h2>Monitored Repositories</h2><table><tr><th>Repository</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+rows+'</table><hr style="border-color:#30363d;margin:16px 0"><h2>Add Repository</h2><div class="row"><input id="nrName" placeholder="owner/repo" class="flex-1"><input id="nrPath" placeholder="/path/to/checkout" class="flex-1"><button onclick="addRepo()">Add</button></div></div>';
 }
 async function addRepo() { await api('/api/repos',{method:'POST',body:JSON.stringify({name:$('#nrName').value.trim(),localPath:$('#nrPath').value.trim()})}); renderContent(); }
@@ -229,7 +230,7 @@ function agentTab(cfg) {
   let repoRows = Object.entries(cfg.repos).map(([n,r]) => {
     const override = ac.perRepoOverride[n];
     const agent = override || ac.defaultAgent;
-    return '<tr><td class="mono">'+esc(n)+'</td><td><select id="ag_'+n+'" style="width:150px"><option value=""'+(override===undefined?' selected':'')+'>Default ('+ac.defaultAgent+')</option><option value="claude"'+(agent==='claude'?' selected':'')+'>Claude</option><option value="codex"'+(agent==='codex'?' selected':'')+'>Codex</option></select></td><td><button onclick="saveRepoAgent(\\''+esc(n)+'\\')">Save</button></td></tr>';
+    return '<tr><td class="mono">'+esc(n)+'</td><td><select id="ag_'+n+'" style="width:150px"><option value=""'+(override===undefined?' selected':'')+'>Default ('+ac.defaultAgent+')</option><option value="claude"'+(agent==='claude'?' selected':'')+'>Claude</option><option value="codex"'+(agent==='codex'?' selected':'')+'>Codex</option></select></td><td><button data-action="saveRepoAgent" data-args="\\''+esc(n)+'\\'">Save</button></td></tr>';
   }).join('');
 
   return '<div class="panel"><h2>Default Agent Type</h2><div class="row"><div class="radio-group">'
@@ -325,7 +326,7 @@ function settingsTab(cfg) {
     + tagPanel('Auto-resolve Bots','autoResolveBots',s.autoResolveBots||[],'bot','newAutoBot');
 }
 function tagPanel(title,key,arr,cls,inputId) {
-  return '<div class="panel"><h2>'+title+'</h2><div>'+arr.map(v=>'<span class="tag '+cls+'">'+esc(v)+'<span class="x" onclick="removeTag(\\''+key+'\\',\\''+esc(v)+'\\')"> x</span></span>').join(' ')+'</div><div class="row" style="margin-top:8px"><input id="'+inputId+'" placeholder="Add..."><button onclick="addTag(\\''+key+'\\',\\''+inputId+'\\')">Add</button></div></div>';
+  return '<div class="panel"><h2>'+title+'</h2><div>'+arr.map(v=>'<span class="tag '+cls+'">'+esc(v)+'<span class="x" data-action="removeTag" data-args="\\''+key+'\\',\\''+esc(v)+'\\'"> x</span></span>').join(' ')+'</div><div class="row" style="margin-top:8px"><input id="'+inputId+'" placeholder="Add..."><button onclick="addTag(\\''+key+'\\',\\''+inputId+'\\')">Add</button></div></div>';
 }
 async function saveSetting(k,v) { await api('/api/settings',{method:'POST',body:JSON.stringify({[k]:v})}); }
 async function toggleBool(key,on) { await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:on})}); }
@@ -355,7 +356,7 @@ async function refreshWorkReport() {
     Object.entries(grouped).forEach(([type, jobs]) => {
       const icon = {issue:'📋',pr:'🔀',review:'👁️',ci:'🔧',conflict:'⚔️'}[type] || '⚙️';
       html += '<div class="panel" style="background:#0d1117;border-left:4px solid #58a6ff"><h3 style="margin-bottom:12px">'+icon+' '+type.toUpperCase()+'</h3>';
-      html += jobs.slice(0,5).map(j => '<div style="padding:8px;margin:4px 0;background:#161b22;border-radius:4px;font-size:12px"><strong>'+esc(j.key)+'</strong><br/><span style="color:#8b949e">Duration: '+j.duration+' | Exit: '+j.code+'</span><br/><span style="color:#58a6ff">'+esc((j.outputTail||'').split('\n').slice(-1)[0].substring(0,100))+'</span></div>').join('');
+      html += jobs.slice(0,5).map(j => '<div style="padding:8px;margin:4px 0;background:#161b22;border-radius:4px;font-size:12px"><strong>'+esc(j.key)+'</strong><br/><span style="color:#8b949e">Duration: '+j.duration+' | Exit: '+j.code+'</span><br/><span style="color:#58a6ff">'+esc((j.outputTail||'').split('\\n').slice(-1)[0].substring(0,100))+'</span></div>').join('');
       html += '</div>';
     });
     r.innerHTML = html;
@@ -394,7 +395,7 @@ async function refreshJobs() {
   if(d.active.length) {
     a.innerHTML = d.active.map(j => {
       const parsed = parseJobKey(j.key);
-      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | Running '+j.running+'</div><div class="live-output"><pre class="log" style="max-height:200px">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" onclick="killJob(\\''+esc(j.key)+'\\')">Kill</button></div>';
+      return '<div class="job-card"><div class="key" style="font-size:14px;font-weight:600">'+parsed.display+'<span class="agent-badge '+j.agentType+'">'+j.agentType+'</span></div><div class="meta">PID '+j.pid+' | Running '+j.running+'</div><div class="live-output"><pre class="log" style="max-height:200px">'+esc(j.output||'(waiting...)')+'</pre></div><button class="danger" style="margin-top:6px" data-action="killJob" data-args="\\''+esc(j.key)+'\\'">Kill</button></div>';
     }).join('');
   } else { a.innerHTML='<div class="empty">No active jobs</div>'; }
 
@@ -403,7 +404,7 @@ async function refreshJobs() {
   if(h && d.history.length) {
     h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+d.history.map(j => {
       const fname = (j.logFile||'').split('/').pop();
-      return '<tr><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td><button class="secondary" onclick="viewLog(\\''+esc(fname)+'\\')">Log</button> <button class="secondary" onclick="viewOutput(\\''+esc(j.key)+'\\')">Output</button></td></tr>';
+      return '<tr><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td><button class="secondary" data-action="viewLog" data-args="\\''+esc(fname)+'\\'">Log</button> <button class="secondary" onclick="viewOutput(\\''+esc(j.key)+'\\')">Output</button></td></tr>';
     }).join('')+'</table>';
   }
 }
@@ -471,6 +472,31 @@ async function tick() {
   else if(currentTab==='Dispatch') refreshDispatch();
 }
 function fmt(s){if(s<60)return s+'s';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m';return Math.floor(s/86400)+'d';}
+
+// Global event delegation for all click-based actions
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.getAttribute('data-action');
+  const args = btn.getAttribute('data-args');
+  if (action === 'killJob' && args) {
+    await killJob(args.replace(/['"]+/g, ''));
+  } else if (action === 'removeRepo' && args) {
+    await removeRepo(args.replace(/['"]+/g, ''));
+  } else if (action === 'saveRepoAgent' && args) {
+    await saveRepoAgent(args.replace(/['"]+/g, ''));
+  } else if (action === 'removeTag') {
+    const [key, val] = args.split('|');
+    await removeTag(key.replace(/['"]+/g, ''), val.replace(/['"]+/g, ''));
+  } else if (action === 'addTag') {
+    const inputId = args.replace(/['"]+/g, '');
+    await addTag(inputId.split('|')[0], inputId.split('|')[1]);
+  } else if (action === 'viewLog') {
+    viewLog(args.replace(/['"]+/g, ''));
+  } else if (action === 'viewOutput') {
+    viewOutput(args.replace(/['"]+/g, ''));
+  }
+}, true);
 
 renderTabs(); renderContent(); tick(); setInterval(tick, 5000);
 </script></body></html>`;

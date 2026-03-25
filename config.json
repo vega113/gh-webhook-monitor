@@ -11,7 +11,15 @@
     "vega113/tube2web": {
       "localPath": "/Users/vega/devroot/tube2web",
       "enabled": true
+    },
+    "vega113/gh-webhook-monitor": {
+      "localPath": "/Users/vega/devroot/gh-webhook-monitor",
+      "enabled": true
     }
+  },
+  "agentConfig": {
+    "defaultAgent": "claude",
+    "perRepoOverride": {}
   },
   "agent": {
     "type": "claude",
@@ -30,7 +38,7 @@
     }
   },
   "settings": {
-    "webhookSecret": "e3cffef5ee13192b113c4d8d82593cf5d6312ae2b9022df0de6bb970b0514ab8",
+    "webhookSecret": "2329d5209ddea364f4f83ca0ffae774b009c6caf99b4cfae1b0e4867fb237509",
     "maxConcurrentJobs": 10,
     "jobTimeoutMinutes": 20,
     "mergeableCheckInterval": 60000,
@@ -57,6 +65,15 @@
     "gateCheckNames": [
       "Codex Review Gate"
     ],
+    "autoResolveBots": [
+      "coderabbitai",
+      "chatgpt-codex-connector"
+    ],
+    "botUsername": "gh-webhook-monitor[bot]",
+    "useAssignmentForCoordination": true,
+    "useLabelsForCoordination": true,
+    "inProgressLabel": "in-progress",
+    "agentResolvedLabel": "agent-resolved",
     "claudeBin": "claude",
     "rateLimits": {
       "updateBranchInterval": 60,
