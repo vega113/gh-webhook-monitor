@@ -15,6 +15,9 @@ import { initializeRateLimiter, getRateLimiter } from "./src/rateLimiterInstance
 import { initializeDispatcher, getDispatcher, getPRStateCache } from "./src/dispatcherInstance.js";
 import { ActionType } from "./src/dispatcher.js";
 import { resolveThreads } from "./src/actions/resolveThreads.js";
+import { handlePullRequestConflict } from "./src/handlers/pullRequestConflict.js";
+import { spawnAgent } from "./src/actions/spawnAgent.js";
+import { getRepoPath } from "./src/config.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -57,6 +60,7 @@ app.post("/webhook", async (req, res) => {
 
   // Execute actions from dispatcher
   const config = getConfig();
+  const prStateCache = getPRStateCache();
   for (const action of actions) {
     if (action === ActionType.RESOLVE_THREADS) {
       const prNumber = payload.pull_request?.number;
@@ -77,6 +81,19 @@ app.post("/webhook", async (req, res) => {
             `PR #${prNumber}: ${err.message}`
           );
         });
+      }
+    }
+    if (action === ActionType.RESOLVE_CONFLICT) {
+      const prNumber = payload.pull_request?.number;
+      if (prNumber) {
+        logEvent(
+          "RESOLVE_CONFLICT",
+          "action-triggered",
+          repo,
+          `PR #${prNumber}: Dispatched action to resolve merge conflict`
+        );
+        // Handle conflict resolution
+        handlePullRequestConflict(payload, prStateCache);
       }
     }
   }
@@ -121,11 +138,128 @@ setupRoutes(app, rateLimiter, dispatcher);
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));
 
-// Start server
+// Start periodic polling for merge conflicts
+const mergeableCheckInterval = config.settings.mergeableCheckInterval || 60000;
+let pollingTimer = null;
+
+function startMergeablePolling() {
+  if (pollingTimer) return; // Already running
+
+  pollingTimer = setInterval(async () => {
+    try {
+      const prStateCache = getPRStateCache();
+      if (!prStateCache) return;
+
+      // Check each configured repo for PRs with conflicts
+      for (const repo of Object.keys(config.repos)) {
+        const conflictPRs = prStateCache.getPRsWithConflicts(repo);
+        for (const pr of conflictPRs) {
+          // Check if we've already processed this conflict recently (5 min cooldown)
+          if (!prStateCache.wasConflictRecentlyProcessed(repo, pr.prNumber)) {
+            logEvent(
+              "CONFLICT",
+              "polling-detected",
+              repo,
+              `PR #${pr.prNumber}: "${pr.title}" has merge conflicts`
+            );
+
+            // Emit conflict detected event through dispatcher
+            const actions = await dispatcher.receive({
+              type: "conflict_detected",
+              payload: {
+                repository: { full_name: repo },
+                pull_request: pr,
+              },
+            });
+
+            // Execute RESOLVE_CONFLICT action if returned
+            for (const action of actions) {
+              if (action === ActionType.RESOLVE_CONFLICT) {
+                const repoPath = getRepoPath(repo);
+                if (repoPath) {
+                  prStateCache.recordConflictDetection(repo, pr.prNumber);
+                  logEvent(
+                    "CONFLICT",
+                    "spawn-agent",
+                    repo,
+                    `PR #${pr.prNumber}: Spawning agent to resolve conflict`
+                  );
+
+                  // Build prompt and spawn agent
+                  const prompt = buildMergeConflictPromptForPolling(
+                    config,
+                    repo,
+                    pr.prNumber,
+                    pr
+                  );
+                  const jobKey = `${repo}#${pr.prNumber}-conflict`;
+                  spawnAgent(repoPath, prompt, jobKey, repo);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logEvent(
+        "ERROR",
+        "merge-polling",
+        "system",
+        `Polling error: ${err.message}`
+      );
+    }
+  }, mergeableCheckInterval);
+
+  logEvent(
+    "INFO",
+    "merge-polling-started",
+    "system",
+    `Polling interval: ${mergeableCheckInterval}ms`
+  );
+}
+
+function buildMergeConflictPromptForPolling(config, repo, prNumber, pr) {
+  const template = config.promptTemplates?.merge_conflict;
+
+  if (!template) {
+    return defaultMergeConflictPromptForPolling(repo, prNumber, pr);
+  }
+
+  return template
+    .replace(/\{\{prNumber\}\}/g, prNumber)
+    .replace(/\{\{prTitle\}\}/g, pr.title || "Unknown")
+    .replace(/\{\{repo\}\}/g, repo)
+    .replace(/\{\{baseBranch\}\}/g, pr.base || "main")
+    .replace(/\{\{headBranch\}\}/g, pr.headBranch || "unknown");
+}
+
+function defaultMergeConflictPromptForPolling(repo, prNumber, pr) {
+  const base = pr.base || "main";
+
+  return `PR #${prNumber}: "${pr.title}" has merge conflicts with the ${base} branch.
+
+Instructions:
+1. Check the PR details: \`gh pr view ${prNumber}\`
+2. Check the merge conflict status: \`gh pr view ${prNumber} --json mergeable\`
+3. Fetch and checkout the branch: \`git fetch origin && git checkout -b pr-${prNumber}\`
+4. Try to rebase: \`git rebase origin/${base}\`
+5. If conflicts appear, resolve them using \`git status\` to find conflicted files
+6. Edit conflicted files to remove conflict markers (<<<<, ====, >>>>)
+7. After resolving all conflicts: \`git add .\` and \`git rebase --continue\`
+8. Force push if needed: \`git push --force-with-lease\`
+9. Post a comment on the PR summarizing the resolution: \`gh pr comment ${prNumber} --body "Merge conflicts have been resolved."\`
+
+If the conflicts are too complex to auto-resolve, post a comment explaining what needs manual intervention.`;
+}
+
+// Start server and polling
 app.listen(PORT, () => {
   console.log("\n🌊 gh-webhook-monitor listening on http://localhost:" + PORT);
   console.log("   Dashboard:  http://localhost:" + PORT + "/");
   console.log("   Agent type: " + config.agent.type);
   console.log("   Repos:      " + Object.keys(config.repos).join(", "));
   console.log("");
+
+  // Start merge conflict polling
+  startMergeablePolling();
 });

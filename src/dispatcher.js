@@ -133,6 +133,18 @@ class ActionDispatcher {
       return [ActionType.NOOP];
     }
 
+    // pull_request: conflict detected (mergeable: false) → resolve conflict
+    if (eventType === "pull_request") {
+      if (prState && prState.mergeable === false) {
+        return [ActionType.RESOLVE_CONFLICT];
+      }
+    }
+
+    // conflict_detected: periodic polling detected mergeable: false → resolve conflict
+    if (eventType === "conflict_detected") {
+      return [ActionType.RESOLVE_CONFLICT];
+    }
+
     // pull_request: opened → wait for CI
     if (eventType === "pull_request" && action === "opened") {
       return [ActionType.NOOP];

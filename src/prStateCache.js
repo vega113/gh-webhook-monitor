@@ -278,6 +278,85 @@ class PRStateCache {
     if (!thread || !thread.authorLogin) return false;
     return thread.authorLogin.toLowerCase().includes(botLogin.toLowerCase());
   }
+
+  /**
+   * Get PR mergeable state with caching and conflict detection
+   * Updates cache with mergeable status from webhook data when available
+   * Returns mergeable state: null (unknown), false (conflict), true (mergeable)
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {Promise<string|null>} "mergeable", "conflict", or null if unknown
+   */
+  async getPRMergeableState(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && cached.state) {
+      // Convert mergeable boolean to state string
+      if (cached.state.mergeable === false) {
+        return "conflict";
+      } else if (cached.state.mergeable === true) {
+        return "mergeable";
+      }
+    }
+
+    // If unknown, return null (would need real API call in production)
+    return null;
+  }
+
+  /**
+   * Get all PRs with merge conflicts from cache
+   * @param {string} repo - Repository in format owner/repo
+   * @returns {Array<Object>} Array of PR objects with conflict state
+   */
+  getPRsWithConflicts(repo) {
+    const conflictPRs = [];
+    for (const [key, cached] of this.cache.entries()) {
+      if (!key.startsWith(`${repo}#`)) continue;
+
+      const state = cached.state;
+      if (state && state.mergeable === false) {
+        conflictPRs.push({
+          prNumber: state.prNumber,
+          repo: state.repo,
+          title: state.title || "Unknown",
+          base: state.base,
+          mergeable: state.mergeable,
+        });
+      }
+    }
+    return conflictPRs;
+  }
+
+  /**
+   * Track a PR that has been detected as having merge conflicts
+   * Used to avoid duplicate conflict resolution attempts
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @returns {Object} Conflict tracking info
+   */
+  recordConflictDetection(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const now = Date.now();
+    const key = `conflict_${cacheKey}`;
+    this.prUpdateTimes.set(key, now);
+    return { prNumber, repo, timestamp: new Date(now).toISOString() };
+  }
+
+  /**
+   * Check if a PR's conflict was recently processed (within cooldown)
+   * @param {string} repo - Repository in format owner/repo
+   * @param {number} prNumber - PR number
+   * @param {number} cooldownMs - Cooldown period in milliseconds (default: 300000 = 5 minutes)
+   * @returns {boolean} True if conflict was processed recently
+   */
+  wasConflictRecentlyProcessed(repo, prNumber, cooldownMs = 300000) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const key = `conflict_${cacheKey}`;
+    const lastUpdate = this.prUpdateTimes.get(key);
+    if (!lastUpdate) return false;
+    return Date.now() - lastUpdate < cooldownMs;
+  }
 }
 
 export { PRStateCache };

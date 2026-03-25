@@ -38,6 +38,20 @@ Read the full issue and comment thread with \`gh issue view {{issueNumber}} --co
 If the comment asks for additional changes or clarifications on work already done, address them.
 If there's an open PR for this issue, update it. Otherwise create a new PR if code changes are needed.
 Post a comment on the issue summarizing what was done.`,
+  merge_conflict: `PR #{{prNumber}}: "{{prTitle}}" has merge conflicts with the {{baseBranch}} branch.
+
+Instructions:
+1. Check the PR details: \`gh pr view {{prNumber}}\`
+2. Check the merge conflict status: \`gh pr view {{prNumber}} --json mergeable\`
+3. Checkout the branch: \`git fetch origin && git checkout {{headBranch}}\`
+4. Try to rebase: \`git rebase origin/{{baseBranch}}\`
+5. If conflicts appear, resolve them using \`git status\` to find conflicted files
+6. Edit conflicted files to remove conflict markers (<<<<, ====, >>>>)
+7. After resolving all conflicts: \`git add .\` and \`git rebase --continue\`
+8. Force push the resolved branch: \`git push --force-with-lease origin {{headBranch}}\`
+9. Post a comment on the PR summarizing the resolution: \`gh pr comment {{prNumber}} --body "Merge conflicts have been resolved."\`
+
+If the conflicts are too complex to auto-resolve, post a comment explaining what needs manual intervention.`,
 };
 
 function defaultConfig() {
@@ -72,6 +86,7 @@ function defaultConfig() {
       webhookSecret: process.env.WEBHOOK_SECRET || "",
       maxConcurrentJobs: 3,
       jobTimeoutMinutes: 15,
+      mergeableCheckInterval: 60000,
       enabledEvents: {
         pull_request_review: true,
         check_suite: true,
