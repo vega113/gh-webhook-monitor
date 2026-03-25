@@ -45,9 +45,10 @@ async function resolveThreads(repo, prNumber, botNames = []) {
     let threads;
     try {
       const body = JSON.stringify({ query: threadsQuery });
-      const output = execSync(`echo ${JSON.stringify(body)} | gh api graphql --input -`, {
+      const output = execSync(`gh api graphql`, {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
+        input: body,
       });
       const result = JSON.parse(output);
 
@@ -115,9 +116,10 @@ async function resolveThreads(repo, prNumber, botNames = []) {
         `;
 
         const mutBody = JSON.stringify({ query: resolveMutation });
-        execSync(`echo ${JSON.stringify(mutBody)} | gh api graphql --input -`, {
+        execSync(`gh api graphql`, {
           encoding: "utf-8",
           stdio: ["pipe", "pipe", "pipe"],
+          input: mutBody,
         });
 
         resolvedCount++;
