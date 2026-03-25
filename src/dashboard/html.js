@@ -89,6 +89,7 @@ pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-hei
 .blocker-item.success::before{content:'✓';color:#238636}
 </style></head><body>
 <div class="topbar">
+  <img src="/logo.svg" alt="GitHub Webhook Monitor" style="height:32px;width:auto;filter:brightness(0) invert(1)">
   <h1>Webhook Monitor</h1>
   <div class="status">
     <span class="dot green" id="sDot"></span>
