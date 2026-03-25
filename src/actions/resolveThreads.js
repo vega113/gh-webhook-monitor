@@ -44,7 +44,8 @@ async function resolveThreads(repo, prNumber, botNames = []) {
 
     let threads;
     try {
-      const output = execSync(`gh api graphql -f query='${threadsQuery.replace(/'/g, "'\"'\"'")}'`, {
+      const body = JSON.stringify({ query: threadsQuery });
+      const output = execSync(`echo ${JSON.stringify(body)} | gh api graphql --input -`, {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
       });
@@ -113,7 +114,8 @@ async function resolveThreads(repo, prNumber, botNames = []) {
           }
         `;
 
-        execSync(`gh api graphql -f query='${resolveMutation.replace(/'/g, "'\"'\"'")}'`, {
+        const mutBody = JSON.stringify({ query: resolveMutation });
+        execSync(`echo ${JSON.stringify(mutBody)} | gh api graphql --input -`, {
           encoding: "utf-8",
           stdio: ["pipe", "pipe", "pipe"],
         });
