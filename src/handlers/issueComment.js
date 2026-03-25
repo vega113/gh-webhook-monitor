@@ -39,7 +39,7 @@ function handleIssueComment(payload) {
       body: comment.body.slice(0, 500),
       repo,
     });
-    spawnAgent(repoPath, prompt, jobKey);
+    spawnAgent(repoPath, prompt, jobKey, repo);
   } else {
     // Issue comment — react if the issue has agent-task label OR comment has trigger keyword
     const labels = (issue.labels || []).map((l) => l.name);

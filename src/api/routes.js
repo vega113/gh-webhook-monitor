@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getConfig, setConfig, getRepoPath } from "../config.js";
 import { getEventLog, getLogDir } from "../logger.js";
 import { getActiveJobs, getJobHistory } from "../actions/spawnAgent.js";
+import { setupAgentRoutes } from "./agentApi.js";
 
 function setupRoutes(app) {
   // Health check
@@ -116,6 +117,9 @@ function setupRoutes(app) {
       .type("text/plain")
       .send(readFileSync(p, "utf-8").split("\n").slice(-500).join("\n"));
   });
+
+  // Agent routes
+  setupAgentRoutes(app);
 }
 
 export { setupRoutes };

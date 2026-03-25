@@ -1,18 +1,19 @@
 import { spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { getConfig } from "../config.js";
+import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
 
 const activeJobs = new Map();
 const jobHistory = [];
 const MAX_HISTORY = 200;
 
-function buildAgentCommand(prompt) {
+function buildAgentCommand(prompt, agentType) {
   const config = getConfig();
   const a = config.agent;
+  const agent = agentType || a.type;
 
-  if (a.type === "codex") {
+  if (agent === "codex") {
     const c = a.codex;
     const args = ["exec"];
     if (c.model) args.push("-m", c.model);
@@ -34,7 +35,7 @@ function buildAgentCommand(prompt) {
   return { bin: c.bin || "claude", args };
 }
 
-function spawnAgent(repoPath, prompt, jobKey) {
+function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
   const config = getConfig();
 
   if (activeJobs.has(jobKey)) {
@@ -51,10 +52,11 @@ function spawnAgent(repoPath, prompt, jobKey) {
     return;
   }
 
-  const { bin, args } = buildAgentCommand(prompt);
+  const agentType = repoFullName ? getAgentForRepo(repoFullName) : config.agent.type;
+  const { bin, args } = buildAgentCommand(prompt, agentType);
   logEvent(
     "SPAWN",
-    config.agent.type,
+    agentType,
     jobKey,
     `${bin} ${args[0]} ... ${prompt.slice(0, 80)}`
   );
@@ -78,7 +80,7 @@ function spawnAgent(repoPath, prompt, jobKey) {
     startTime,
     logFile,
     prompt,
-    agentType: config.agent.type,
+    agentType,
     output: outputChunks,
   };
   activeJobs.set(jobKey, jobInfo);

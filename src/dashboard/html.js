@@ -133,10 +133,18 @@ async function toggleRepo(n,on) { const c=await api('/api/config'); c.repos[n].e
 // --- Agent ---
 function agentTab(cfg) {
   const a = cfg.agent;
-  return '<div class="panel"><h2>AI Agent Type</h2><div class="row"><div class="radio-group">'
-    + radioBtn('agentType','claude','Claude Code',a.type==='claude')
-    + radioBtn('agentType','codex','Codex CLI',a.type==='codex')
-    + '</div></div></div>'
+  const ac = cfg.agentConfig || { defaultAgent: 'claude', perRepoOverride: {} };
+  let repoRows = Object.entries(cfg.repos).map(([n,r]) => {
+    const override = ac.perRepoOverride[n];
+    const agent = override || ac.defaultAgent;
+    return '<tr><td class="mono">'+esc(n)+'</td><td><select id="ag_'+n+'" style="width:150px"><option value=""'+(override===undefined?' selected':'')+'>Default ('+ac.defaultAgent+')</option><option value="claude"'+(agent==='claude'?' selected':'')+'>Claude</option><option value="codex"'+(agent==='codex'?' selected':'')+'>Codex</option></select></td><td><button onclick="saveRepoAgent(\\''+esc(n)+'\\')">Save</button></td></tr>';
+  }).join('');
+
+  return '<div class="panel"><h2>Default Agent Type</h2><div class="row"><div class="radio-group">'
+    + radioBtn('agentType','claude','Claude Code',ac.defaultAgent==='claude')
+    + radioBtn('agentType','codex','Codex CLI',ac.defaultAgent==='codex')
+    + '</div></div><button onclick="saveDefaultAgent()">Save Default</button></div>'
+    + '<div class="panel"><h2>Per-Repository Overrides</h2><table><tr><th>Repository</th><th>Agent</th><th></th></tr>'+repoRows+'</table></div>'
     + '<div class="panel" id="claudeCfg" style="display:'+(a.type==='claude'?'block':'none')+'"><h2>Claude Code Settings</h2>'
     + field('Claude CLI path','cBin',a.claude.bin,'claude')
     + '<div class="row"><label style="width:180px">Model</label><select id="cModel" style="width:200px"><option value="">Default (auto)</option><option value="sonnet"'+(a.claude.model==='sonnet'?' selected':'')+'>Sonnet (fast)</option><option value="opus"'+(a.claude.model==='opus'?' selected':'')+'>Opus (powerful)</option><option value="haiku"'+(a.claude.model==='haiku'?' selected':'')+'>Haiku (light)</option></select></div>'
@@ -153,7 +161,22 @@ function agentTab(cfg) {
 function radioBtn(name,val,label,checked) { return '<label><input type="radio" name="'+name+'" value="'+val+'" '+(checked?'checked':'')+' onchange="switchAgent(\\''+val+'\\')"><span>'+label+'</span></label>'; }
 function field(label,id,val,ph) { return '<div class="row"><label style="width:180px">'+label+'</label><input id="'+id+'" value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'" style="width:300px"></div>'; }
 async function switchAgent(type) {
-  await api('/api/agent',{method:'POST',body:JSON.stringify({type})});
+  await api('/api/agent',{method:'POST',body:JSON.stringify({defaultAgent:type})});
+  renderContent();
+}
+async function saveDefaultAgent() {
+  const checked = $$('input[name="agentType"]:checked');
+  if (checked.length > 0) {
+    await api('/api/agent',{method:'POST',body:JSON.stringify({defaultAgent:checked[0].value})});
+    renderContent();
+  }
+}
+async function saveRepoAgent(repo) {
+  const select = $('#ag_'+repo);
+  if (!select) return;
+  const agent = select.value || null;
+  const [owner, repoName] = repo.split('/');
+  await api('/api/repos/'+owner+'/'+repoName+'/agent',{method:'POST',body:JSON.stringify({agent})});
   renderContent();
 }
 async function saveAgent(type) {

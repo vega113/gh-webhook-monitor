@@ -26,7 +26,8 @@ function handleCheckSuite(payload) {
   spawnAgent(
     repoPath,
     prompt,
-    `ci-fail-${repo}-${suite.head_sha.slice(0, 8)}`
+    `ci-fail-${repo}-${suite.head_sha.slice(0, 8)}`,
+    repo
   );
 }
 

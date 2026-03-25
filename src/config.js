@@ -48,6 +48,10 @@ function defaultConfig() {
         enabled: true,
       },
     },
+    agentConfig: {
+      defaultAgent: "claude",
+      perRepoOverride: {},
+    },
     agent: {
       type: "claude",
       claude: {
@@ -89,6 +93,10 @@ function loadConfig() {
     const def = defaultConfig();
     return {
       repos: saved.repos || def.repos,
+      agentConfig: {
+        defaultAgent: saved.agentConfig?.defaultAgent || def.agentConfig.defaultAgent,
+        perRepoOverride: saved.agentConfig?.perRepoOverride || def.agentConfig.perRepoOverride,
+      },
       agent: {
         ...def.agent,
         ...saved.agent,
@@ -122,6 +130,11 @@ function getRepoPath(fullName) {
   return r?.enabled ? r.localPath : null;
 }
 
+function getAgentForRepo(repoFullName) {
+  const agentCfg = config.agentConfig;
+  return agentCfg.perRepoOverride[repoFullName] || agentCfg.defaultAgent;
+}
+
 function getSecret() {
   return config.settings.webhookSecret || process.env.WEBHOOK_SECRET || "";
 }
@@ -139,6 +152,7 @@ export {
   loadConfig,
   saveConfig,
   getRepoPath,
+  getAgentForRepo,
   getSecret,
   getConfig,
   setConfig,

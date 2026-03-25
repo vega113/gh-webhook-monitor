@@ -48,7 +48,7 @@ function handlePullRequestReview(payload) {
   });
 
   setCooldown(jobKey);
-  spawnAgent(repoPath, prompt, jobKey);
+  spawnAgent(repoPath, prompt, jobKey, repo);
 }
 
 export { handlePullRequestReview };

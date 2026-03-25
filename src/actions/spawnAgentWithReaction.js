@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { getConfig } from "../config.js";
+import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
 import { reactToIssue } from "./reactions.js";
 import { getActiveJobs, getJobHistory, buildAgentCommand } from "./spawnAgent.js";
@@ -30,10 +30,11 @@ function spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issueNumber) {
   // Acknowledge with eyes emoji immediately
   if (issueNumber) reactToIssue(repo, issueNumber, "eyes");
 
-  const { bin, args } = buildAgentCommand(prompt);
+  const agentType = getAgentForRepo(repo);
+  const { bin, args } = buildAgentCommand(prompt, agentType);
   logEvent(
     "SPAWN",
-    config.agent.type,
+    agentType,
     jobKey,
     `${bin} ${args[0]} ... ${prompt.slice(0, 80)}`
   );
@@ -57,7 +58,7 @@ function spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issueNumber) {
     startTime,
     logFile,
     prompt,
-    agentType: config.agent.type,
+    agentType,
     output: outputChunks,
   };
   activeJobs.set(jobKey, jobInfo);
