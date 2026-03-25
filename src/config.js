@@ -100,6 +100,11 @@ function defaultConfig() {
       ignoredBots: ["github-actions[bot]", "dependabot[bot]"],
       gateCheckNames: ["Codex Review Gate"],
       autoResolveBots: ["coderabbitai", "chatgpt-codex-connector"],
+      botUsername: "github-actions[bot]",
+      useAssignmentForCoordination: true,
+      useLabelsForCoordination: true,
+      inProgressLabel: "agent-working",
+      agentResolvedLabel: "agent-resolved",
     },
     promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES },
   };

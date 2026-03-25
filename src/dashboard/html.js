@@ -292,6 +292,13 @@ function settingsTab(cfg) {
     + '<div class="row"><label style="width:220px">Max concurrent jobs</label><input id="sMaxJ" type="number" min="1" max="10" value="'+s.maxConcurrentJobs+'" style="width:80px"><button onclick="saveSetting(\\'maxConcurrentJobs\\',+$(\\'\\'#sMaxJ\\'\\').value)">Save</button></div>'
     + '<div class="row"><label style="width:220px">Job timeout (minutes)</label><input id="sTimeout" type="number" min="1" max="60" value="'+s.jobTimeoutMinutes+'" style="width:80px"><button onclick="saveSetting(\\'jobTimeoutMinutes\\',+$(\\'\\'#sTimeout\\'\\').value)">Save</button></div>'
     + '</div><div class="panel"><h2>Enabled Events</h2>'+evHtml+'</div>'
+    + '<div class="panel"><h2>Issue Coordination</h2>'
+    + '<div class="row"><label style="width:220px">Use assignment for coordination</label><label class="toggle"><input type="checkbox" '+(s.useAssignmentForCoordination?'checked':'')+' onchange="toggleBool(\\'useAssignmentForCoordination\\',this.checked)"><span class="slider"></span></label></div>'
+    + '<div class="row"><label style="width:220px">Use labels for coordination</label><label class="toggle"><input type="checkbox" '+(s.useLabelsForCoordination?'checked':'')+' onchange="toggleBool(\\'useLabelsForCoordination\\',this.checked)"><span class="slider"></span></label></div>'
+    + '<div class="row"><label style="width:220px">Bot username</label><input id="sBotUser" value="'+(s.botUsername||'github-actions[bot]')+'" style="width:300px"><button onclick="saveSetting(\\'botUsername\\',$(\\'#sBotUser\\').value)">Save</button></div>'
+    + '<div class="row"><label style="width:220px">In-progress label</label><input id="sInProgLabel" value="'+(s.inProgressLabel||'agent-working')+'" style="width:300px"><button onclick="saveSetting(\\'inProgressLabel\\',$(\\'#sInProgLabel\\').value)">Save</button></div>'
+    + '<div class="row"><label style="width:220px">Resolved label</label><input id="sResolvedLabel" value="'+(s.agentResolvedLabel||'agent-resolved')+'" style="width:300px"><button onclick="saveSetting(\\'agentResolvedLabel\\',$(\\'#sResolvedLabel\\').value)">Save</button></div>'
+    + '</div>'
     + tagPanel('Gate Check Names','gateCheckNames',s.gateCheckNames||[],'kw','newGate')
     + tagPanel('Trigger Keywords','triggerKeywords',s.triggerKeywords,'kw','newKw')
     + tagPanel('Auto-fix Issue Labels','issueLabels',s.issueLabels,'label','newLbl')
@@ -302,6 +309,7 @@ function tagPanel(title,key,arr,cls,inputId) {
   return '<div class="panel"><h2>'+title+'</h2><div>'+arr.map(v=>'<span class="tag '+cls+'">'+esc(v)+'<span class="x" onclick="removeTag(\\''+key+'\\',\\''+esc(v)+'\\')"> x</span></span>').join(' ')+'</div><div class="row" style="margin-top:8px"><input id="'+inputId+'" placeholder="Add..."><button onclick="addTag(\\''+key+'\\',\\''+inputId+'\\')">Add</button></div></div>';
 }
 async function saveSetting(k,v) { await api('/api/settings',{method:'POST',body:JSON.stringify({[k]:v})}); }
+async function toggleBool(key,on) { await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:on})}); }
 async function toggleEv(ev,on) { const c=await api('/api/config'); c.settings.enabledEvents[ev]=on; await api('/api/settings',{method:'POST',body:JSON.stringify({enabledEvents:c.settings.enabledEvents})}); }
 async function addTag(key,inputId) { const v=$('#'+inputId).value.trim(); if(!v)return; const c=await api('/api/config'); c.settings[key].push(v); await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:c.settings[key]})}); renderContent(); }
 async function removeTag(key,val) { const c=await api('/api/config'); c.settings[key]=c.settings[key].filter(x=>x!==val); await api('/api/settings',{method:'POST',body:JSON.stringify({[key]:c.settings[key]})}); renderContent(); }

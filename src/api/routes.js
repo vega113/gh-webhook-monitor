@@ -7,6 +7,7 @@ import { setupAgentRoutes } from "./agentApi.js";
 import { setupRateLimitRoutes } from "./rateLimitApi.js";
 import { setupDispatcherRoutes } from "./dispatcherApi.js";
 import { setupStatusRoutes } from "./statusApi.js";
+import { getIssueAssignees } from "../issueCoordination.js";
 
 function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
   // Health check
@@ -119,6 +120,39 @@ function setupRoutes(app, rateLimiter, dispatcher, statusCache = null) {
     res
       .type("text/plain")
       .send(readFileSync(p, "utf-8").split("\n").slice(-500).join("\n"));
+  });
+
+  // Issue coordination endpoints
+  app.get("/api/issues/assigned", (req, res) => {
+    const config = getConfig();
+    const repo = req.query.repo;
+
+    if (!repo) {
+      return res.status(400).json({ error: "repo query parameter required" });
+    }
+
+    try {
+      const assignees = getIssueAssignees(repo, req.query.issue);
+      res.json({ assigned: assignees.length > 0, assignees });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/issues/unassigned", (req, res) => {
+    const config = getConfig();
+    const repo = req.query.repo;
+
+    if (!repo) {
+      return res.status(400).json({ error: "repo query parameter required" });
+    }
+
+    // This would typically query open issues without assignees
+    // For now, return a placeholder that the client can use
+    res.json({
+      message: "Use GitHub API directly to query unassigned issues",
+      example: `gh api repos/${repo}/issues --jq '.[] | select(.assignees == []) | {number: .number, title: .title}'`,
+    });
   });
 
   // Agent routes
