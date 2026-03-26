@@ -18,6 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .dot.green{background:#3fb950} .dot.red{background:#f85149} .dot.amber{background:#d29922}
 .badge{background:rgba(255,255,255,.15);color:#fff;padding:2px 10px;border-radius:12px;font-size:13px}
+.badge-ping{background:rgba(34,197,94,.22);border:1px solid rgba(16,185,129,.45)}
 .container{max-width:1200px;margin:0 auto;padding:20px}
 .tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
 .tab{padding:8px 18px;border-radius:8px 8px 0 0;cursor:pointer;background:#161b22;color:#8b949e;border:1px solid #30363d;border-bottom:none;font-size:14px;user-select:none}
@@ -96,6 +97,7 @@ pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-hei
     <span class="badge" id="sAgent">...</span>
     <span class="badge" id="sUptime">...</span>
     <span class="badge" id="sJobs">0 jobs</span>
+    <span class="badge badge-ping" id="sPing">...</span>
   </div>
 </div>
 <div class="container">
@@ -114,6 +116,15 @@ function renderTabs() {
   $('#tabBar').innerHTML = TABS.map(t => '<div class="tab'+(t===currentTab?' active':'')+'" onclick="switchTab(\\''+t+'\\')">'+t+'</div>').join('');
 }
 function switchTab(t) { currentTab = t; renderTabs(); renderContent(); }
+
+function getRecentPingCount(events, minutes = 5) {
+  const cutoff = Date.now() - minutes * 60 * 1000;
+  return (events || []).filter((event) => {
+    if (!event?.ts || String(event.event).toLowerCase() !== "ping") return false;
+    const parsed = Date.parse(event.ts);
+    return Number.isFinite(parsed) && parsed >= cutoff;
+  }).length;
+}
 
 async function renderContent() {
   const cfg = await api('/api/config');
@@ -539,7 +550,7 @@ function esc(s) { const d=document.createElement('div'); d.textContent=String(s|
 // --- Health bar + auto-refresh ---
 async function tick() {
   try {
-    const h = await api('/api/health');
+    const [h, events] = await Promise.all([api('/api/health'), api('/api/events')]);
     $('#sDot').className='dot green';
     $('#sAgent').textContent=h.agentType;
     $('#sUptime').textContent=fmt(h.uptime);
@@ -547,6 +558,8 @@ async function tick() {
     let jobStatus = h.activeJobs + ' job' + (h.activeJobs !== 1 ? 's' : '');
     if (pending > 0) jobStatus += ' + ' + pending + ' queued';
     $('#sJobs').textContent = jobStatus;
+    const recentPingCount = getRecentPingCount(events);
+    $('#sPing').textContent = recentPingCount + ' ping' + (recentPingCount === 1 ? '' : 's') + ' / 5m';
   } catch { $('#sDot').className='dot red'; }
   if(currentTab==='Dashboard') refreshDashboard();
   else if(currentTab==='Status') refreshStatus();
