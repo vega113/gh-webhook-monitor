@@ -9,4 +9,6 @@ test("jobs dashboard exposes a persistent job detail panel with copy actions", (
   assert.ok(html.includes("Absolute log path"), "missing absolute log path label");
   assert.ok(html.includes("Copy path"), "missing copy path action");
   assert.ok(html.includes("Copy output"), "missing copy output action");
+  assert.ok(html.includes('id="sPing"'), "missing ping badge");
+  assert.ok(html.includes("getRecentPingCount"), "missing ping count helper");
 });
