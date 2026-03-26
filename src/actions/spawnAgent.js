@@ -104,7 +104,9 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     return;
   }
 
-  const agentType = repoFullName ? getAgentForRepo(repoFullName) : config.agent.type;
+  const agentType = repoFullName
+    ? getAgentForRepo(repoFullName)
+    : config.agentConfig?.defaultAgent || config.agent.type;
   const { bin, args } = buildAgentCommand(prompt, agentType);
   logEvent(
     "SPAWN",

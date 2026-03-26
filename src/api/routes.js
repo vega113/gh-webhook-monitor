@@ -24,7 +24,7 @@ function setupRoutes(
       activeJobs: getActiveJobs().size,
       pendingJobs: jobQueue ? jobQueue.length() : 0,
       uptime: Math.floor(process.uptime()),
-      agentType: config.agent.type,
+      agentType: config.agentConfig?.defaultAgent || config.agent.type,
     });
   });
 
@@ -69,10 +69,40 @@ function setupRoutes(
 
   // Agent endpoints
   app.post("/api/agent", (req, res) => {
+    const { defaultAgent, type, claude, codex } = req.body;
     const config = getConfig();
-    config.agent = { ...config.agent, ...req.body };
+    const hasPayload =
+      defaultAgent !== undefined || type !== undefined || claude !== undefined || codex !== undefined;
+
+    if (!hasPayload) {
+      return res.status(400).json({ error: "Missing agent payload" });
+    }
+
+    if (defaultAgent !== undefined) {
+      if (!["claude", "codex"].includes(defaultAgent)) {
+        return res.status(400).json({ error: "Invalid default agent type" });
+      }
+      config.agentConfig.defaultAgent = defaultAgent;
+      config.agent.type = defaultAgent;
+    }
+
+    if (type !== undefined) {
+      if (!["claude", "codex"].includes(type)) {
+        return res.status(400).json({ error: "Invalid agent type" });
+      }
+      config.agent.type = type;
+    }
+
+    if (claude && typeof claude === "object") {
+      config.agent.claude = { ...config.agent.claude, ...claude };
+    }
+
+    if (codex && typeof codex === "object") {
+      config.agent.codex = { ...config.agent.codex, ...codex };
+    }
+
     setConfig(config);
-    res.json({ ok: true });
+    res.json({ ok: true, agentConfig: config.agentConfig, agent: config.agent });
   });
 
   // Prompts endpoints
