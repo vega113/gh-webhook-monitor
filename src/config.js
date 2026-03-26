@@ -26,16 +26,20 @@ Issue description:
 
 Instructions:
 1. Read the full issue with \`gh issue view {{issueNumber}}\`
-2. Investigate the codebase as needed
-3. Implement the requested changes
-4. Create a PR with the fix/feature, adding the label "agent-authored"
-5. Reference the issue in the PR body: "Fixes #{{issueNumber}}" or "Addresses #{{issueNumber}}"
-6. Post a comment on the issue summarizing what was done: \`gh issue comment {{issueNumber}} --body "..."\``,
+2. Write a concise implementation plan before touching code
+3. Review that plan with Codex using model \`gpt-5.4\` and reasoning effort \`xhigh\`
+4. Incorporate the review feedback, then implement the requested changes
+5. Review the implementation with Codex using model \`gpt-5.4\` and reasoning effort \`medium\`
+6. If this touches login, authentication, or registration, run the app locally with email registration/confirmation turned off, then verify a real user can register and log in end-to-end without email confirmation
+7. Create a PR with the fix/feature, adding the label "agent-authored"
+8. Reference the issue in the PR body: "Fixes #{{issueNumber}}" or "Addresses #{{issueNumber}}"
+9. Post a comment on the issue summarizing what was done: \`gh issue comment {{issueNumber}} --body "..."\``,
   issue_followup: `A follow-up comment was posted on issue #{{issueNumber}} ("{{issueTitle}}") by {{author}}: "{{body}}"
 Labels: {{labels}}
 
 Read the full issue and comment thread with \`gh issue view {{issueNumber}} --comments\`.
 If the comment asks for additional changes or clarifications on work already done, address them.
+Use the same plan -> Codex \`gpt-5.4\` xhigh review -> implement -> Codex \`gpt-5.4\` medium review workflow for any new code changes.
 If there's an open PR for this issue, update it. Otherwise create a new PR if code changes are needed.
 Post a comment on the issue summarizing what was done.`,
   merge_conflict: `PR #{{prNumber}}: "{{prTitle}}" has merge conflicts with the {{baseBranch}} branch.

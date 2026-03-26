@@ -66,7 +66,8 @@ function rotateJobLogs() {
 // Run log rotation on startup
 rotateJobLogs();
 
-// Run log rotation every 24 hours
-setInterval(rotateJobLogs, 24 * 60 * 60 * 1000);
+// Run log rotation every 24 hours without keeping the process alive on its own.
+const rotationTimer = setInterval(rotateJobLogs, 24 * 60 * 60 * 1000);
+rotationTimer.unref?.();
 
 export { logEvent, getEventLog, getLogDir };

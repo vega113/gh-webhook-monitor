@@ -364,10 +364,88 @@ async function refreshWorkReport() {
 }
 
 // --- Jobs ---
-function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="logPanel" style="display:none"><h2>Session Log</h2><pre class="log" id="logOut"></pre></div>'; }
+function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="jobDetailPanel" style="display:none"><h2>Job Detail</h2><div class="hint" id="jobDetailMeta"></div><div class="row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div><pre class="log" id="jobDetailOut"></pre></div>'; }
+let jobHistory_cache = [];
+let selectedJobDetail = null;
+
+function getSelectedJob() {
+  if (!selectedJobDetail?.jobKey) return null;
+  return jobHistory_cache?.find((j) => j.key === selectedJobDetail.jobKey) || null;
+}
+
+async function copyTextToClipboard(text) {
+  if (!text) return false;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }
+}
+
+async function renderJobDetail() {
+  const panel = $("#jobDetailPanel");
+  const meta = $("#jobDetailMeta");
+  const actions = $("#jobDetailActions");
+  const out = $("#jobDetailOut");
+  if (!panel || !meta || !actions || !out) return;
+
+  const job = getSelectedJob();
+  if (!job) {
+    panel.style.display = "none";
+    meta.textContent = "";
+    actions.innerHTML = "";
+    out.textContent = "";
+    return;
+  }
+
+  panel.style.display = "block";
+
+  const isLog = selectedJobDetail.mode === "log";
+  meta.textContent = isLog
+    ? "Absolute log path: " + (job.logFile || "(missing)")
+    : "Captured output for: " + job.key;
+
+  actions.innerHTML = isLog
+    ? '<button data-action="copyJobDetailPath">Copy path</button> <button data-action="copyJobDetailContent">Copy log</button> <button class="secondary" data-action="closeJobDetail">Close</button>'
+    : '<button data-action="copyJobDetailContent">Copy output</button> <button class="secondary" data-action="closeJobDetail">Close</button>';
+
+  if (isLog) {
+    out.textContent = "Loading log...";
+    try {
+      const filename = (job.logFile || "").split("/").pop();
+      const r = await fetch("/api/logs/" + encodeURIComponent(filename));
+      out.textContent = await r.text();
+    } catch (e) {
+      out.textContent = "Error loading log: " + e.message;
+    }
+  } else {
+    out.textContent = job.outputTail || "(no output recorded)";
+  }
+}
+
+async function openJobDetail(jobKey, mode) {
+  selectedJobDetail = { jobKey, mode };
+  await renderJobDetail();
+}
+
+function closeJobDetail() {
+  selectedJobDetail = null;
+  renderJobDetail();
+}
 async function refreshJobs() {
   const d = await api('/api/jobs');
   const stats = await api('/api/jobs/stats');
+  jobHistory_cache = d.history || [];
 
   // Queue stats
   const s = $('#jStats');
@@ -403,42 +481,24 @@ async function refreshJobs() {
   const h = $('#jHist');
   if(h && d.history.length) {
     const rows = d.history.map((j,i) => {
-      const fname = (j.logFile||'').split('/').pop();
-      const rowId = 'jrow-'+i;
-      const logId = 'jlog-'+i;
-      return '<tr id="'+rowId+'"><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td style="white-space:nowrap"><button class="secondary" data-action="expandLog" data-rowid="'+rowId+'" data-logid="'+logId+'" data-logfile="'+esc(fname)+'">📄 Log</button> <button class="secondary" data-action="viewOutput" data-jobkey="'+esc(j.key)+'">📋 Output</button></td></tr>'
-        + '<tr id="'+logId+'" style="display:none"><td colspan="6" style="padding:0"><div style="background:#0d1117;padding:16px;border-left:3px solid #58a6ff;font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word" id="log-'+i+'">Loading...</div></td></tr>';
+      return '<tr id="jrow-'+i+'"><td class="mono">'+esc(j.key)+'</td><td><span class="agent-badge '+(j.agentType||'claude')+'">'+(j.agentType||'claude')+'</span></td><td>'+j.code+'</td><td>'+j.duration+'</td><td class="mono" style="font-size:11px">'+esc(j.startTime)+'</td><td style="white-space:nowrap"><button class="secondary" data-action="openJobDetail" data-detail="log" data-jobkey="'+esc(j.key)+'">📄 Log</button> <button class="secondary" data-action="openJobDetail" data-detail="output" data-jobkey="'+esc(j.key)+'">📋 Output</button></td></tr>';
     }).join('');
     h.innerHTML = '<table><tr><th>Job</th><th>Agent</th><th>Exit</th><th>Duration</th><th>Time</th><th></th></tr>'+rows+'</table>';
+  } else if (h) {
+    h.innerHTML = '<div class="empty">No job history yet</div>';
   }
+
+  await renderJobDetail();
 }
 async function killJob(k) { await api('/api/jobs/'+encodeURIComponent(k)+'/kill',{method:'POST'}); setTimeout(()=>{if(currentTab==='Jobs')refreshJobs();else refreshDashboard();},1000); }
-async function viewLog(f) { $('#logPanel').style.display='block'; const r=await fetch('/api/logs/'+f); $('#logOut').textContent=await r.text(); }
-async function expandLog(rowId, logId, logfile) {
-  const logRow = document.getElementById(logId);
-  if (!logRow) return;
-  const isVisible = logRow.style.display !== 'none';
-  if(isVisible) {
-    logRow.style.display = 'none';
-  } else {
-    const contentDiv = document.getElementById('log-'+logId.split('-')[1]);
-    if(contentDiv) {
-      try {
-        const r = await fetch('/api/logs/'+encodeURIComponent(logfile));
-        contentDiv.textContent = await r.text();
-      } catch(e) {
-        contentDiv.textContent = 'Error loading log: '+e.message;
-      }
-    }
-    logRow.style.display = 'table-row';
-  }
+async function copyJobDetailPath() {
+  const job = getSelectedJob();
+  if (job?.logFile) await copyTextToClipboard(job.logFile);
 }
-function viewOutput(key) {
-  const d = jobHistory_cache?.find(j=>j.key===key);
-  if(d?.outputTail) { $('#logPanel').style.display='block'; $('#logOut').textContent=d.outputTail; }
+async function copyJobDetailContent() {
+  const out = $("#jobDetailOut");
+  if (out?.textContent) await copyTextToClipboard(out.textContent);
 }
-let jobHistory_cache;
-(async()=>{ const d=await api('/api/jobs'); jobHistory_cache=d.history; })();
 
 // --- Events ---
 function eventsTab() { return '<div class="panel"><h2>Event Log</h2><div id="eFull"><div class="empty">No events</div></div></div>'; }
@@ -535,17 +595,16 @@ document.addEventListener('click', async (e) => {
     const key = btn.getAttribute('data-key');
     const input = btn.getAttribute('data-input');
     if (key && input) await addTag(key, input);
-  } else if (action === 'expandLog') {
-    const rowId = btn.getAttribute('data-rowid');
-    const logId = btn.getAttribute('data-logid');
-    const logfile = btn.getAttribute('data-logfile');
-    if (rowId && logId && logfile) await expandLog(rowId, logId, logfile);
-  } else if (action === 'viewLog') {
-    const logfile = btn.getAttribute('data-logfile');
-    if (logfile) viewLog(logfile);
-  } else if (action === 'viewOutput') {
-    const jobkey = btn.getAttribute('data-jobkey');
-    if (jobkey) viewOutput(jobkey);
+  } else if (action === 'openJobDetail') {
+    const jobKey = btn.getAttribute('data-jobkey');
+    const detail = btn.getAttribute('data-detail');
+    if (jobKey && detail) await openJobDetail(jobKey, detail);
+  } else if (action === 'copyJobDetailPath') {
+    await copyJobDetailPath();
+  } else if (action === 'copyJobDetailContent') {
+    await copyJobDetailContent();
+  } else if (action === 'closeJobDetail') {
+    closeJobDetail();
   }
 }, true);
 
