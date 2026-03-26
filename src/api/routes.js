@@ -8,6 +8,7 @@ import { setupRateLimitRoutes } from "./rateLimitApi.js";
 import { setupDispatcherRoutes } from "./dispatcherApi.js";
 import { setupStatusRoutes } from "./statusApi.js";
 import { getIssueAssignees } from "../issueCoordination.js";
+import { getPostMergeGateStatus } from "../postMergeGateState.js";
 
 function setupRoutes(
   app,
@@ -19,12 +20,16 @@ function setupRoutes(
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
+    const degradedRepos = Object.keys(config.repos || {}).filter((repo) => {
+      return getPostMergeGateStatus(repo).degraded;
+    });
     res.json({
       status: "ok",
       activeJobs: getActiveJobs().size,
       pendingJobs: jobQueue ? jobQueue.length() : 0,
       uptime: Math.floor(process.uptime()),
       agentType: config.agentConfig?.defaultAgent || config.agent.type,
+      degradedPostMergeRepos: degradedRepos,
     });
   });
 

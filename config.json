@@ -41,6 +41,15 @@
     "maxConcurrentJobs": 10,
     "jobTimeoutMinutes": 20,
     "mergeableCheckInterval": 60000,
+    "postMergeGate": {
+      "enabled": true,
+      "workflowFile": ".github/workflows/build.yml",
+      "workflowName": "Build",
+      "checkName": "Server Build (JDK 17)",
+      "branch": "main",
+      "cooldownMinutes": 10,
+      "triggerOnMerge": false
+    },
     "enabledEvents": {
       "pull_request_review": true,
       "check_suite": true,

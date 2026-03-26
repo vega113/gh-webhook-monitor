@@ -1,6 +1,9 @@
 import { getConfig, getRepoPath } from "../config.js";
 import { logEvent } from "../logger.js";
 import { updateBranch } from "../actions/updateBranch.js";
+import { getPostMergeGateSettings } from "../postMergeGate.js";
+import { recordPostMergeGateTrigger, shouldSkipPostMergeGateTrigger } from "../postMergeGateState.js";
+import { triggerPostMergeGate } from "../actions/triggerPostMergeGate.js";
 
 /**
  * Handle pull_request:closed events with merged=true
@@ -24,6 +27,37 @@ async function handlePullRequestMerge(payload, prStateCache) {
     repo,
     `#${pr.number}: ${pr.title} merged into ${pr.base?.ref}`
   );
+
+  const gateSettings = getPostMergeGateSettings(config, pr.base?.ref);
+  if (gateSettings) {
+    const cooldownMs = gateSettings.cooldownMinutes * 60 * 1000;
+    const mergeCommitSha = pr.merge_commit_sha || pr.head?.sha || "";
+
+    if (shouldSkipPostMergeGateTrigger(repo, cooldownMs)) {
+      logEvent(
+        "POST_MERGE_GATE",
+        "cooldown-skip",
+        repo,
+        `PR #${pr.number}: skipping gate trigger during cooldown window`
+      );
+    } else {
+      recordPostMergeGateTrigger(repo, {
+        branch: pr.base?.ref,
+        sha: mergeCommitSha,
+      });
+
+      if (gateSettings.triggerOnMerge && gateSettings.workflowFile) {
+        triggerPostMergeGate(repo, gateSettings, pr);
+      } else {
+        logEvent(
+          "POST_MERGE_GATE",
+          "awaiting-check",
+          repo,
+          `PR #${pr.number}: waiting for ${gateSettings.checkName} on ${mergeCommitSha.slice(0, 8)}`
+        );
+      }
+    }
+  }
 
   // If we have PR state cache, get all open PRs on same base branch
   if (prStateCache) {

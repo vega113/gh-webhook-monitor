@@ -24,6 +24,15 @@
       "issues": true,
       "issue_comment": true,
       "pull_request": true
+    },
+    "postMergeGate": {
+      "enabled": false,
+      "workflowFile": ".github/workflows/build.yml",
+      "workflowName": "Build",
+      "checkName": "Server Build (JDK 17)",
+      "branch": "main",
+      "cooldownMinutes": 10,
+      "triggerOnMerge": false
     }
   }
 }

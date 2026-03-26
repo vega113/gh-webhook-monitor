@@ -96,6 +96,15 @@ function defaultConfig() {
       maxConcurrentJobs: 3,
       jobTimeoutMinutes: 15,
       mergeableCheckInterval: 60000,
+      postMergeGate: {
+        enabled: false,
+        workflowFile: ".github/workflows/build.yml",
+        workflowName: "Build",
+        checkName: "Server Build (JDK 17)",
+        branch: "main",
+        cooldownMinutes: 10,
+        triggerOnMerge: false,
+      },
       enabledEvents: {
         pull_request_review: true,
         check_suite: true,
@@ -164,6 +173,10 @@ function loadConfig() {
       settings: {
         ...def.settings,
         ...savedSettings,
+        postMergeGate: {
+          ...def.settings.postMergeGate,
+          ...(savedSettings.postMergeGate || {}),
+        },
         enabledEvents: {
           ...def.settings.enabledEvents,
           ...(savedSettings.enabledEvents || {}),

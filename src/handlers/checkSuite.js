@@ -1,6 +1,7 @@
 import { getConfig, getRepoPath } from "../config.js";
 import { renderPrompt } from "../prompts.js";
 import { spawnAgent } from "../actions/spawnAgent.js";
+import { isAwaitingPostMergeGateForSha } from "../postMergeGateState.js";
 
 function handleCheckSuite(payload) {
   const config = getConfig();
@@ -16,6 +17,10 @@ function handleCheckSuite(payload) {
     suite.head_branch !== payload.repository.default_branch
   )
     return;
+
+  if (isAwaitingPostMergeGateForSha(repo, suite.head_branch, suite.head_sha)) {
+    return;
+  }
 
   const prompt = renderPrompt("check_suite", {
     branch: suite.head_branch,

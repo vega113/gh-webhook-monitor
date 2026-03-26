@@ -1,6 +1,8 @@
 import { getConfig, getRepoPath } from "../config.js";
 import { logEvent } from "../logger.js";
 import { rerunGate } from "../actions/rerunGate.js";
+import { isPostMergeGateCheckRun } from "../postMergeGate.js";
+import { recordPostMergeGateResult } from "../postMergeGateState.js";
 
 /**
  * Handle check_run webhook events
@@ -29,6 +31,28 @@ function handleCheckRun(payload) {
     repo,
     `${checkName} (${conclusion}) - PRs: ${prNumbers.join(",")}`
   );
+
+  if (
+    isPostMergeGateCheckRun(config, {
+      repo,
+      branch: checkRun.check_suite?.head_branch || checkRun.head_branch || payload.repository.default_branch,
+      name: checkName,
+    })
+  ) {
+    recordPostMergeGateResult(repo, {
+      branch: checkRun.check_suite?.head_branch || checkRun.head_branch || payload.repository.default_branch,
+      sha: checkRun.head_sha,
+      conclusion,
+      checkName,
+    });
+    logEvent(
+      "POST_MERGE_GATE",
+      conclusion || "completed",
+      repo,
+      `${checkName} on ${String(checkRun.head_sha || "").slice(0, 8)}`
+    );
+    return;
+  }
 
   // Process for each associated PR
   if (prNumbers.length > 0) {
