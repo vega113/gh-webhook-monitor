@@ -13,6 +13,10 @@ test("jobs dashboard exposes a persistent job detail panel with copy actions", (
   assert.ok(html.includes("Copy output"), "missing copy output action");
   assert.ok(panelIndex >= 0 && historyIndex >= 0 && panelIndex < historyIndex,
     "job detail panel should render above job history so clicks reveal content in-view");
+  assert.ok(
+    html.includes("insertBefore(panel, historyPanel)"),
+    "missing runtime guard that moves the job detail panel above history"
+  );
   assert.ok(html.includes('id="sPing"'), "missing ping badge");
   assert.ok(html.includes("getRecentPingCount"), "missing ping count helper");
 });

@@ -419,6 +419,11 @@ async function renderJobDetail() {
     return;
   }
 
+  const historyPanel = $("#jHist")?.closest(".panel");
+  if (historyPanel?.parentNode && historyPanel.previousElementSibling !== panel) {
+    historyPanel.parentNode.insertBefore(panel, historyPanel);
+  }
+
   panel.style.display = "block";
 
   const isLog = selectedJobDetail.mode === "log";
@@ -449,7 +454,7 @@ async function openJobDetail(jobKey, mode) {
   await renderJobDetail();
   const panel = $("#jobDetailPanel");
   if (panel) {
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    panel.scrollIntoView({ behavior: "auto", block: "start" });
   }
 }
 
