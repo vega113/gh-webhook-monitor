@@ -17,9 +17,10 @@ import { initializeDispatcher, getDispatcher, getPRStateCache, getStatusCache } 
 import { ActionType } from "./src/dispatcher.js";
 import { resolveThreads } from "./src/actions/resolveThreads.js";
 import { handlePullRequestConflict } from "./src/handlers/pullRequestConflict.js";
-import { spawnAgent, setJobQueue } from "./src/actions/spawnAgent.js";
+import { spawnAgent, setJobQueue, processQueue } from "./src/actions/spawnAgent.js";
 import { getRepoPath } from "./src/config.js";
 import { JobQueue } from "./src/jobQueue.js";
+import { recoverActiveJobs } from "./src/jobRuntimeState.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -38,6 +39,16 @@ const dispatcher = getDispatcher();
 // Initialize job queue
 const jobQueue = new JobQueue();
 setJobQueue(jobQueue);
+const recoveredJobs = recoverActiveJobs(jobQueue);
+if (recoveredJobs.length > 0) {
+  logEvent(
+    "RECOVER",
+    "jobs",
+    "system",
+    `Recovered ${recoveredJobs.length} active job${recoveredJobs.length === 1 ? "" : "s"} after restart`
+  );
+}
+processQueue();
 
 // Create Express app
 const app = express();

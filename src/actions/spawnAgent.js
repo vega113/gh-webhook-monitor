@@ -3,6 +3,8 @@ import { appendFileSync, readFileSync, writeFileSync, existsSync } from "node:fs
 import { join } from "node:path";
 import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
+import { normalizeJobHistory } from "../jobHistory.js";
+import { clearActiveJob, recordActiveJob } from "../jobRuntimeState.js";
 
 const activeJobs = new Map();
 let jobHistory = [];
@@ -15,8 +17,15 @@ function loadJobHistory() {
   try {
     if (existsSync(HISTORY_FILE)) {
       const data = readFileSync(HISTORY_FILE, "utf-8");
-      jobHistory = JSON.parse(data);
-      if (!Array.isArray(jobHistory)) jobHistory = [];
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) {
+        jobHistory = [];
+        return;
+      }
+
+      const normalized = normalizeJobHistory(parsed);
+      jobHistory = normalized.history;
+      if (normalized.changed) saveJobHistory();
     }
   } catch (e) {
     // If file is corrupted, start fresh
@@ -120,14 +129,18 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
 
   const jobInfo = {
     key: jobKey,
+    jobKey,
     pid: child.pid,
     startTime,
     logFile,
     prompt,
     agentType,
+    repoPath,
+    repoFullName,
     output: outputChunks,
   };
   activeJobs.set(jobKey, jobInfo);
+  recordActiveJob(jobInfo);
 
   child.stdout.on("data", (data) => {
     appendFileSync(logFile, data);
@@ -161,6 +174,7 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     settled = true;
     clearTimeout(timeout);
     activeJobs.delete(jobKey);
+    clearActiveJob(jobKey);
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const fullOutput = outputChunks.join("");
     logEvent("DONE", detail || `exit=${code}`, jobKey, `${duration}s`);
@@ -205,24 +219,22 @@ function setJobQueue(queue) {
 }
 
 function processQueue() {
-  if (!jobQueue || activeJobs.size >= getConfig().settings.maxConcurrentJobs) {
-    return; // No queue or still at capacity
+  while (jobQueue && activeJobs.size < getConfig().settings.maxConcurrentJobs) {
+    const nextJob = jobQueue.dequeue();
+    if (!nextJob) {
+      return; // Queue is empty
+    }
+
+    logEvent(
+      "QUEUE",
+      "dequeue",
+      nextJob.jobKey,
+      `Processing queued job (${jobQueue.length()} remaining)`
+    );
+
+    // Spawn the dequeued job
+    spawnAgent(nextJob.repoPath, nextJob.prompt, nextJob.jobKey, nextJob.repoFullName);
   }
-
-  const nextJob = jobQueue.dequeue();
-  if (!nextJob) {
-    return; // Queue is empty
-  }
-
-  logEvent(
-    "QUEUE",
-    "dequeue",
-    nextJob.jobKey,
-    `Processing queued job (${jobQueue.length()} remaining)`
-  );
-
-  // Spawn the dequeued job
-  spawnAgent(nextJob.repoPath, nextJob.prompt, nextJob.jobKey, nextJob.repoFullName);
 }
 
 export {
