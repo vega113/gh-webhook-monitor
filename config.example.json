@@ -15,7 +15,6 @@
     }
   },
   "settings": {
-    "webhookSecret": "GENERATE NEW SECRET FROM GITHUB WEBHOOK SETTINGS",
     "maxConcurrentJobs": 10,
     "jobTimeoutMinutes": 20,
     "enabledEvents": {

@@ -49,3 +49,15 @@ test("spawnAgent handles missing agent binary without crashing the server", () =
 
   rmSync(dir, { recursive: true, force: true });
 });
+
+test("buildAgentCommand prepends shared safety guardrails to every agent prompt", async () => {
+  const { buildAgentCommand } = await import("../src/actions/spawnAgent.js");
+
+  const { args } = buildAgentCommand("Investigate the failing PR checks.", "codex");
+  const finalPrompt = args.at(-1);
+
+  assert.match(finalPrompt, /Never commit secrets/i);
+  assert.match(finalPrompt, /git fetch origin/i);
+  assert.match(finalPrompt, /slow merge cadence/i);
+  assert.match(finalPrompt, /Investigate the failing PR checks\./);
+});

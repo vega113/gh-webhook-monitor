@@ -375,7 +375,7 @@ async function refreshWorkReport() {
 }
 
 // --- Jobs ---
-function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div><div class="panel" id="jobDetailPanel" style="display:none"><h2>Job Detail</h2><div class="hint" id="jobDetailMeta"></div><div class="row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div><pre class="log" id="jobDetailOut"></pre></div>'; }
+function jobsTab() { return '<div class="panel"><h2>Job Queue Status</h2><div id="jStats"><div class="empty">Loading...</div></div></div><div class="panel"><h2>Pending Jobs (Queue)</h2><div id="jQueue"><div class="empty">No pending jobs</div></div></div><div class="panel"><h2>Active Jobs (live output)</h2><div id="jActive"><div class="empty">No active jobs</div></div></div><div class="panel" id="jobDetailPanel" style="display:none"><h2>Job Detail</h2><div class="hint" id="jobDetailMeta"></div><div class="row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div><pre class="log" id="jobDetailOut"></pre></div><div class="panel"><h2>Job History</h2><div id="jHist"></div></div>'; }
 let jobHistory_cache = [];
 let selectedJobDetail = null;
 
@@ -447,6 +447,10 @@ async function renderJobDetail() {
 async function openJobDetail(jobKey, mode) {
   selectedJobDetail = { jobKey, mode };
   await renderJobDetail();
+  const panel = $("#jobDetailPanel");
+  if (panel) {
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function closeJobDetail() {

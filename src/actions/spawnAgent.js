@@ -11,6 +11,13 @@ let jobHistory = [];
 const MAX_HISTORY = 200;
 const HISTORY_FILE = join(getLogDir(), "job-history.json");
 let jobQueue = null; // Set by setJobQueue
+const AGENT_SAFETY_PREAMBLE = [
+  "Safety guardrails:",
+  "- Never commit secrets to tracked files. Use GitHub Actions secrets for hosted automation and environment variables for local-only secrets.",
+  "- Before final push or merge-related actions, run `git fetch origin` and rebase onto the latest base branch.",
+  "- If deploys or integration health are already broken, prefer a slow merge cadence and escalate instead of landing overlapping stale branches.",
+  "",
+].join("\n");
 
 // Load job history from disk on startup
 function loadJobHistory() {
@@ -44,10 +51,15 @@ function saveJobHistory() {
 
 loadJobHistory();
 
+function applyAgentSafetyPreamble(prompt) {
+  return `${AGENT_SAFETY_PREAMBLE}${prompt}`;
+}
+
 function buildAgentCommand(prompt, agentType) {
   const config = getConfig();
   const a = config.agent;
   const agent = agentType || a.type;
+  const finalPrompt = applyAgentSafetyPreamble(prompt);
 
   if (agent === "codex") {
     const c = a.codex;
@@ -57,7 +69,7 @@ function buildAgentCommand(prompt, agentType) {
       args.push("--config", `model_reasoning_effort="${c.reasoningEffort}"`);
     if (c.sandbox) args.push("--sandbox", c.sandbox);
     if (c.extraArgs) args.push(...c.extraArgs.split(/\s+/).filter(Boolean));
-    args.push(prompt);
+    args.push(finalPrompt);
     return { bin: c.bin || "codex", args };
   }
 
@@ -67,7 +79,7 @@ function buildAgentCommand(prompt, agentType) {
   if (c.model) args.push("--model", c.model);
   if (c.allowedTools) args.push("--allowedTools", c.allowedTools);
   if (c.extraArgs) args.push(...c.extraArgs.split(/\s+/).filter(Boolean));
-  args.push(prompt);
+  args.push(finalPrompt);
   return { bin: c.bin || "claude", args };
 }
 
@@ -242,6 +254,7 @@ function processQueue() {
 export {
   spawnAgent,
   buildAgentCommand,
+  applyAgentSafetyPreamble,
   getActiveJobs,
   getJobHistory,
   setJobQueue,

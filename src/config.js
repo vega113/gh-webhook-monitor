@@ -31,15 +31,21 @@ Instructions:
 4. Incorporate the review feedback, then implement the requested changes
 5. Review the implementation with Codex using model \`gpt-5.4\` and reasoning effort \`medium\`
 6. If this touches login, authentication, or registration, run the app locally with email registration/confirmation turned off, then verify a real user can register and log in end-to-end without email confirmation
-7. Create a PR with the fix/feature, adding the label "agent-authored"
-8. Reference the issue in the PR body: "Fixes #{{issueNumber}}" or "Addresses #{{issueNumber}}"
-9. Post a comment on the issue summarizing what was done: \`gh issue comment {{issueNumber}} --body "..."\``,
+7. Never commit secrets. Use GitHub Actions secrets for hosted automation and environment variables for local-only secrets. If a fix appears to require committing a secret, stop and escalate.
+8. Before final push or merge-related actions, run \`git fetch origin\` and rebase onto the latest \`origin/main\` (or the PR base branch). If the branch cannot be refreshed cleanly, stop and report it.
+9. If deploys or integration checks are already broken, prefer a slow merge cadence: avoid rushing overlapping PRs through until the branch is healthy again.
+10. Create a PR with the fix/feature, adding the label "agent-authored"
+11. Reference the issue in the PR body: "Fixes #{{issueNumber}}" or "Addresses #{{issueNumber}}"
+12. Post a comment on the issue summarizing what was done: \`gh issue comment {{issueNumber}} --body "..."\``,
   issue_followup: `A follow-up comment was posted on issue #{{issueNumber}} ("{{issueTitle}}") by {{author}}: "{{body}}"
 Labels: {{labels}}
 
 Read the full issue and comment thread with \`gh issue view {{issueNumber}} --comments\`.
 If the comment asks for additional changes or clarifications on work already done, address them.
 Use the same plan -> Codex \`gpt-5.4\` xhigh review -> implement -> Codex \`gpt-5.4\` medium review workflow for any new code changes.
+Never commit secrets. Use GitHub Actions secrets for hosted automation and environment variables for local-only secrets. If a fix appears to require committing a secret, stop and escalate.
+Before final push or merge-related actions, run \`git fetch origin\` and rebase onto the latest \`origin/main\` (or the PR base branch). If the branch cannot be refreshed cleanly, stop and report it.
+If deploys or integration checks are already broken, prefer a slow merge cadence over merging several stale branches quickly.
 If there's an open PR for this issue, update it. Otherwise create a new PR if code changes are needed.
 Post a comment on the issue summarizing what was done.`,
   merge_conflict: `PR #{{prNumber}}: "{{prTitle}}" has merge conflicts with the {{baseBranch}} branch.
@@ -87,7 +93,6 @@ function defaultConfig() {
       },
     },
     settings: {
-      webhookSecret: process.env.WEBHOOK_SECRET || "",
       maxConcurrentJobs: 3,
       jobTimeoutMinutes: 15,
       mergeableCheckInterval: 60000,
@@ -114,6 +119,18 @@ function defaultConfig() {
   };
 }
 
+function sanitizeSettings(settings = {}) {
+  const { webhookSecret: _legacyWebhookSecret, ...rest } = settings;
+  return rest;
+}
+
+function sanitizeConfigForPersistence(configToSave) {
+  return {
+    ...configToSave,
+    settings: sanitizeSettings(configToSave.settings),
+  };
+}
+
 function validateBotUsername(config) {
   const botUsername = config.settings?.botUsername;
   const useAssignment = config.settings?.useAssignmentForCoordination;
@@ -131,6 +148,7 @@ function loadConfig() {
   if (existsSync(CONFIG_PATH)) {
     const saved = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
     const def = defaultConfig();
+    const savedSettings = sanitizeSettings(saved.settings);
     const config = {
       repos: saved.repos || def.repos,
       agentConfig: {
@@ -145,10 +163,10 @@ function loadConfig() {
       },
       settings: {
         ...def.settings,
-        ...saved.settings,
+        ...savedSettings,
         enabledEvents: {
           ...def.settings.enabledEvents,
-          ...(saved.settings?.enabledEvents || {}),
+          ...(savedSettings.enabledEvents || {}),
         },
       },
       promptTemplates: { ...def.promptTemplates, ...(saved.promptTemplates || {}) },
@@ -165,7 +183,7 @@ function loadConfig() {
 let config = loadConfig();
 
 function saveConfig() {
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  writeFileSync(CONFIG_PATH, JSON.stringify(sanitizeConfigForPersistence(config), null, 2));
 }
 
 function getRepoPath(fullName) {
@@ -179,7 +197,17 @@ function getAgentForRepo(repoFullName) {
 }
 
 function getSecret() {
-  return config.settings.webhookSecret || process.env.WEBHOOK_SECRET || "";
+  return process.env.GITHUB_WEBHOOK_SECRET || "";
+}
+
+function requireWebhookSecret() {
+  const secret = getSecret();
+  if (!secret) {
+    throw new Error(
+      "Missing GITHUB_WEBHOOK_SECRET. Set it in the environment instead of committing it to config files."
+    );
+  }
+  return secret;
 }
 
 function getConfig() {
@@ -187,7 +215,10 @@ function getConfig() {
 }
 
 function setConfig(newConfig) {
-  config = newConfig;
+  config = {
+    ...newConfig,
+    settings: sanitizeSettings(newConfig.settings),
+  };
   saveConfig();
 }
 
@@ -197,6 +228,7 @@ export {
   getRepoPath,
   getAgentForRepo,
   getSecret,
+  requireWebhookSecret,
   getConfig,
   setConfig,
   DEFAULT_PROMPT_TEMPLATES,

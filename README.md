@@ -41,7 +41,7 @@ npm install
 # Create .env with a random webhook secret
 SECRET=$(openssl rand -hex 32)
 cat > .env <<EOF
-WEBHOOK_SECRET=$SECRET
+GITHUB_WEBHOOK_SECRET=$SECRET
 PORT=3847
 EOF
 
@@ -52,12 +52,12 @@ kill %1
 
 echo ""
 echo "Your webhook secret: $SECRET"
-echo "Save this - you'll need it when adding the GitHub webhook."
+echo "Keep this in your environment only - you'll need it when adding the GitHub webhook."
 ```
 
 ### 3. Configure your repos
 
-Edit `config.json` or use the web dashboard (http://localhost:3847 once running):
+Edit `config.json` or use the web dashboard (http://localhost:3847 once running). Do not put secrets in `config.json`; the server reads `GITHUB_WEBHOOK_SECRET` from the environment and exits if it is missing:
 
 ```json
 {
@@ -118,7 +118,7 @@ gh api repos/$REPO/hooks --method POST \
 Or manually: go to your repo's **Settings > Webhooks > Add webhook** and configure:
 - Payload URL: `https://gh-webhook.yourdomain.com/webhook`
 - Content type: `application/json`
-- Secret: your webhook secret
+- Secret: the value from `GITHUB_WEBHOOK_SECRET`
 - Events: Pull requests, Pull request reviews, Check suites, Issues, Issue comments
 
 ### 6. Create recommended labels

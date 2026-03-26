@@ -1,5 +1,5 @@
 import express from "express";
-import { loadConfig, getConfig } from "./src/config.js";
+import { loadConfig, getConfig, requireWebhookSecret } from "./src/config.js";
 import { logEvent } from "./src/logger.js";
 import { verifySignature } from "./src/webhook.js";
 import { handlePullRequestReview } from "./src/handlers/pullRequestReview.js";
@@ -25,6 +25,7 @@ import { recoverActiveJobs } from "./src/jobRuntimeState.js";
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
 // Initialize config
+requireWebhookSecret();
 loadConfig();
 const config = getConfig();
 

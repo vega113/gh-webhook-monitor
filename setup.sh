@@ -17,7 +17,7 @@ npm install
 if [[ ! -f .env ]]; then
   SECRET=$(openssl rand -hex 32)
   cat > .env <<EOF
-WEBHOOK_SECRET=$SECRET
+GITHUB_WEBHOOK_SECRET=$SECRET
 PORT=3847
 CLAUDE_BIN=claude
 EOF
@@ -63,7 +63,7 @@ echo "Then add the webhook to your GitHub repo:"
 echo "  1. Go to: https://github.com/vega113/incubator-wave/settings/hooks/new"
 echo "  2. Payload URL: <cloudflared-url>/webhook"
 echo "  3. Content type: application/json"
-echo "  4. Secret: (from .env WEBHOOK_SECRET)"
+echo "  4. Secret: (from .env GITHUB_WEBHOOK_SECRET)"
 echo "  5. Events: Select 'Let me select individual events' and check:"
 echo "     - Pull request reviews"
 echo "     - Pull requests"
