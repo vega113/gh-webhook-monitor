@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { getDashboardHTML } from "../src/dashboard/html.js";
 
 test("jobs dashboard exposes a persistent job detail panel with copy actions", () => {
@@ -19,4 +20,23 @@ test("jobs dashboard exposes a persistent job detail panel with copy actions", (
   );
   assert.ok(html.includes('id="sPing"'), "missing ping badge");
   assert.ok(html.includes("getRecentPingCount"), "missing ping count helper");
+});
+
+test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () => {
+  const html = getDashboardHTML();
+  const faviconBytes = readFileSync("public/favicon.ico");
+
+  assert.ok(
+    html.includes('<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">'),
+    "missing 32x32 png favicon link"
+  );
+  assert.ok(
+    html.includes('<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">'),
+    "missing 16x16 png favicon link"
+  );
+  assert.deepEqual(
+    Array.from(faviconBytes.subarray(0, 4)),
+    [0, 0, 1, 0],
+    "favicon.ico should be a real ICO file"
+  );
 });
