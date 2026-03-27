@@ -25,6 +25,7 @@ import { recoverActiveJobs } from "./src/jobRuntimeState.js";
 import { buildWebhookCacheUpdate } from "./src/webhookCacheUpdate.js";
 import { createLiveHub } from "./src/dashboard/liveHub.js";
 import { collectDashboardSnapshot } from "./src/dashboard/data.js";
+import { determineBacklogActions } from "./src/backlogActions.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -116,7 +117,7 @@ app.post("/webhook", async (req, res) => {
       }
     }
     if (action === ActionType.RESOLVE_CONFLICT) {
-      const prNumber = payload.pull_request?.number;
+      const prNumber = payload.pull_request?.number ?? payload.pull_request?.prNumber;
       if (prNumber) {
         logEvent(
           "RESOLVE_CONFLICT",
@@ -126,6 +127,13 @@ app.post("/webhook", async (req, res) => {
         );
         // Handle conflict resolution
         handlePullRequestConflict(payload, prStateCache);
+      } else {
+        logEvent(
+          "RESOLVE_CONFLICT",
+          "missing-pr-number",
+          repo,
+          "Conflict action had no PR number in payload"
+        );
       }
     }
   }
@@ -306,6 +314,47 @@ function startStatusPolling() {
             repo,
             `Refreshed ${refreshedCount} PR statuses`
           );
+        }
+
+        const backlogActions = determineBacklogActions({ repo, prs: allPRs });
+        for (const backlogAction of backlogActions) {
+          if (backlogAction.type === "resolve_conflict") {
+            const conflictPr = allPRs.find((pr) => pr.prNumber === backlogAction.prNumber);
+            if (!conflictPr) continue;
+            if (prStateCache.wasConflictRecentlyProcessed(repo, conflictPr.prNumber)) continue;
+            prStateCache.recordConflictDetection(repo, conflictPr.prNumber);
+            const prompt = buildMergeConflictPromptForPolling(config, repo, conflictPr.prNumber, {
+              title: conflictPr.title,
+              base: conflictPr.base,
+            });
+            const repoPath = getRepoPath(repo);
+            if (repoPath) {
+              logEvent("CONFLICT", "backlog-spawn", repo, `PR #${conflictPr.prNumber}: spawning conflict resolver from status scan`);
+              spawnAgent(repoPath, prompt, `${repo}#${conflictPr.prNumber}-conflict`, repo, {
+                eventType: "merge_conflict",
+              });
+            }
+          }
+
+          if (backlogAction.type === "review_backlog") {
+            const pr = allPRs.find((item) => item.prNumber === backlogAction.prNumber);
+            if (!pr) continue;
+            if (!rateLimiter.canExecute(pr.prNumber, "spawnAgent")) continue;
+            const repoPath = getRepoPath(repo);
+            if (!repoPath) continue;
+            const prompt = config.promptTemplates.pull_request_review
+              .replace(/\{\{prNumber\}\}/g, pr.prNumber)
+              .replace(/\{\{prTitle\}\}/g, pr.title || "Unknown")
+              .replace(/\{\{reviewer\}\}/g, pr.latestReviews?.[0]?.author?.login || "reviewer")
+              .replace(/\{\{reviewState\}\}/g, pr.latestReviews?.[0]?.state || pr.reviewState || "commented")
+              .replace(/\{\{repo\}\}/g, repo);
+            rateLimiter.recordExecution(pr.prNumber, "spawnAgent");
+            logEvent("SPAWN", "review-backlog", repo, `PR #${pr.prNumber}: spawning review follow-up from status scan`);
+            spawnAgent(repoPath, prompt, `review-${repo}-${pr.prNumber}`, repo, {
+              eventType: "pull_request_review",
+              reviewState: "commented",
+            });
+          }
         }
       }
       liveHub.broadcastSnapshot().catch((err) => {

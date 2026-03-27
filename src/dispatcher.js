@@ -97,6 +97,11 @@ class ActionDispatcher {
         prNumber = payload.issue?.number;
         prTitle = payload.issue?.title;
         break;
+      case "conflict_detected":
+        prNumber = payload.pull_request?.prNumber ?? payload.pull_request?.number;
+        branch = payload.pull_request?.base?.ref ?? payload.pull_request?.base;
+        prTitle = payload.pull_request?.title;
+        break;
       default:
         return null;
     }

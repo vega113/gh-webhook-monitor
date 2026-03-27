@@ -152,7 +152,7 @@ class PRStateCache {
         }));
 
     const raw = run(
-      `gh pr list --repo ${repo} --state open --json number,title,isDraft,mergeStateStatus,reviewDecision,baseRefName,statusCheckRollup,createdAt`
+      `gh pr list --repo ${repo} --state open --json number,title,isDraft,mergeStateStatus,reviewDecision,baseRefName,statusCheckRollup,createdAt,latestReviews`
     );
     const prs = JSON.parse(raw);
     const seen = new Set();
@@ -181,6 +181,7 @@ class PRStateCache {
         reviewState: this.mapReviewDecision(pr.reviewDecision),
         checkStatus: this.mapStatusCheckRollup(pr.statusCheckRollup),
         checks: pr.statusCheckRollup || [],
+        latestReviews: pr.latestReviews || [],
         lastObservedAt: new Date().toISOString(),
       };
 

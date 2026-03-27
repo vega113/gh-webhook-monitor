@@ -5,7 +5,6 @@ import { spawnAgent } from "../actions/spawnAgent.js";
 import { resolveThreads } from "../actions/resolveThreads.js";
 import { hasLabel, AGENT_PR_LABEL } from "./utils.js";
 import { getRateLimiter } from "../rateLimiterInstance.js";
-import { getDispatcher } from "../dispatcherInstance.js";
 
 async function handlePullRequestReview(payload) {
   const config = getConfig();
@@ -25,6 +24,20 @@ async function handlePullRequestReview(payload) {
   const reviewer = review.user.login;
   const autoResolveBots = config.settings.autoResolveBots || [];
 
+  // Anti-loop: skip reviews on agent-authored PRs from bots (human reviews still handled)
+  if (
+    hasLabel(pr.labels || [], AGENT_PR_LABEL) &&
+    review.user.type === "Bot"
+  ) {
+    logEvent(
+      "SKIP",
+      "agent-pr-bot-review",
+      repo,
+      `PR #${pr.number} is agent-authored, bot review ignored`
+    );
+    return;
+  }
+
   // Check if reviewer is a bot to auto-resolve threads
   const isAutoResolveBot = autoResolveBots.some((botName) =>
     reviewer.toLowerCase().includes(botName.toLowerCase())
@@ -38,21 +51,7 @@ async function handlePullRequestReview(payload) {
       `PR #${pr.number}: Review from bot "${reviewer}" - auto-resolving threads`
     );
     await resolveThreads(repo, pr.number, [reviewer]);
-    return;
-  }
-
-  // Anti-loop: skip reviews on agent-authored PRs from bots (human reviews still handled)
-  if (
-    hasLabel(pr.labels || [], AGENT_PR_LABEL) &&
-    review.user.type === "Bot"
-  ) {
-    logEvent(
-      "SKIP",
-      "agent-pr-bot-review",
-      repo,
-      `PR #${pr.number} is agent-authored, bot review ignored`
-    );
-    return;
+    // Continue into normal review handling so actionable bot comments can still spawn an agent.
   }
 
   const rateLimiter = getRateLimiter();

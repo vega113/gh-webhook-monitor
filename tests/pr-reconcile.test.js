@@ -77,3 +77,32 @@ test("buildWebhookCacheUpdate normalizes pull_request and check_suite payloads",
   assert.equal(checkSuiteUpdate.webhookData.type, "check_suite");
   assert.equal(checkSuiteUpdate.webhookData.checkSuite.conclusion, "failure");
 });
+
+test("syncOpenPRsFromGitHub keeps latest reviews for backlog automation", async () => {
+  const cache = new PRStateCache(null, 300);
+  const sample = JSON.stringify([
+    {
+      number: 393,
+      title: "fix websocket reconnect",
+      isDraft: false,
+      mergeStateStatus: "DIRTY",
+      reviewDecision: "",
+      baseRefName: "main",
+      createdAt: "2026-03-27T07:00:00Z",
+      latestReviews: [
+        {
+          author: { login: "coderabbitai" },
+          state: "COMMENTED",
+          body: "Actionable comments posted: 1"
+        }
+      ],
+      statusCheckRollup: []
+    }
+  ]);
+
+  await cache.syncOpenPRsFromGitHub("vega113/incubator-wave", () => sample);
+  const pr = await cache.get("vega113/incubator-wave", 393);
+  assert.equal(pr.latestReviews.length, 1);
+  assert.equal(pr.latestReviews[0].author.login, "coderabbitai");
+  assert.equal(pr.latestReviews[0].state, "COMMENTED");
+});
