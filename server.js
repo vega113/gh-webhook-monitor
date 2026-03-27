@@ -21,6 +21,7 @@ import { spawnAgent, setJobQueue, processQueue } from "./src/actions/spawnAgent.
 import { getRepoPath } from "./src/config.js";
 import { JobQueue } from "./src/jobQueue.js";
 import { recoverActiveJobs } from "./src/jobRuntimeState.js";
+import { buildWebhookCacheUpdate } from "./src/webhookCacheUpdate.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -69,6 +70,15 @@ app.post("/webhook", async (req, res) => {
   const repo = payload.repository?.full_name || "unknown";
 
   logEvent(event, payload.action || "", repo, "received");
+
+  const cacheUpdate = buildWebhookCacheUpdate(event, payload);
+  if (cacheUpdate) {
+    statusCache.updateFromWebhook(
+      cacheUpdate.repo,
+      cacheUpdate.prNumber,
+      cacheUpdate.webhookData
+    );
+  }
 
   // Use dispatcher to decide what to do
   const actions = await dispatcher.receive({
@@ -253,6 +263,16 @@ function startStatusPolling() {
 
       // Refresh status for each configured repo
       for (const repo of Object.keys(config.repos)) {
+        try {
+          prStateCache.ensureRepoSynced(repo);
+        } catch (err) {
+          logEvent(
+            "ERROR",
+            "status-polling",
+            repo,
+            `Sync failed: ${err.message}`
+          );
+        }
         const allPRs = prStateCache.getAllOpenPRs(repo);
         let refreshedCount = 0;
 

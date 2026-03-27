@@ -1,5 +1,6 @@
 import { logEvent } from "../logger.js";
 import { getPRStateCache } from "../dispatcherInstance.js";
+import { getConfig } from "../config.js";
 
 /**
  * Setup status API routes for PR status monitoring
@@ -8,6 +9,17 @@ function setupStatusRoutes(app, statusCache) {
   // GET /api/status - Get all PR statuses
   app.get("/api/status", async (_req, res) => {
     try {
+      const prStateCache = getPRStateCache();
+      const config = getConfig();
+      if (prStateCache) {
+        for (const repo of Object.keys(config.repos || {})) {
+          try {
+            prStateCache.ensureRepoSynced(repo);
+          } catch (err) {
+            logEvent("ERROR", "status-api-sync", repo, err.message);
+          }
+        }
+      }
       const allStatuses = statusCache.getAllValid();
       res.json({
         ok: true,

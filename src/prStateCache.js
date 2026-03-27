@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { logEvent } from "./logger.js";
 
 /**
@@ -10,6 +11,7 @@ class PRStateCache {
     this.cacheTTLSeconds = cacheTTLSeconds;
     this.cache = new Map(); // key: "owner/repo#prNumber"
     this.prUpdateTimes = new Map(); // key: "owner/repo#prNumber", tracks last update attempt time
+    this.repoSyncTimes = new Map();
   }
 
   /**
@@ -130,6 +132,106 @@ class PRStateCache {
    */
   clear() {
     this.cache.clear();
+    this.repoSyncTimes.clear();
+  }
+
+  syncOpenPRsFromGitHub(repo, runner = null) {
+    const run =
+      runner ||
+      ((command) =>
+        execSync(command, {
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }));
+
+    const raw = run(
+      `gh pr list --repo ${repo} --state open --json number,title,isDraft,mergeStateStatus,reviewDecision,baseRefName,statusCheckRollup`
+    );
+    const prs = JSON.parse(raw);
+    const seen = new Set();
+
+    for (const pr of prs) {
+      const cacheKey = `${repo}#${pr.number}`;
+      seen.add(cacheKey);
+      const existing = this.cache.get(cacheKey)?.state || {
+        prNumber: pr.number,
+        repo,
+        reviews: [],
+        checks: [],
+        comments: 0,
+        threads: [],
+      };
+
+      const next = {
+        ...existing,
+        prNumber: pr.number,
+        repo,
+        title: pr.title,
+        isDraft: pr.isDraft,
+        base: pr.baseRefName,
+        mergeable: this.mapMergeStateStatus(pr.mergeStateStatus),
+        reviewState: this.mapReviewDecision(pr.reviewDecision),
+        checkStatus: this.mapStatusCheckRollup(pr.statusCheckRollup),
+        checks: pr.statusCheckRollup || [],
+      };
+
+      this.cache.set(cacheKey, {
+        state: next,
+        expiresAt: Date.now() + this.cacheTTLSeconds * 1000,
+      });
+    }
+
+    for (const key of Array.from(this.cache.keys())) {
+      if (key.startsWith(`${repo}#`) && !seen.has(key)) {
+        this.cache.delete(key);
+      }
+    }
+
+    this.repoSyncTimes.set(repo, Date.now());
+    return prs.length;
+  }
+
+  ensureRepoSynced(repo, syncTTLSeconds = 60, runner = null) {
+    const last = this.repoSyncTimes.get(repo);
+    if (last && Date.now() - last < syncTTLSeconds * 1000) {
+      return 0;
+    }
+    return this.syncOpenPRsFromGitHub(repo, runner);
+  }
+
+  mapMergeStateStatus(mergeStateStatus) {
+    if (mergeStateStatus === "DIRTY") return false;
+    if (["CLEAN", "HAS_HOOKS", "UNSTABLE", "BLOCKED"].includes(mergeStateStatus)) {
+      return true;
+    }
+    return null;
+  }
+
+  mapReviewDecision(reviewDecision) {
+    if (reviewDecision === "APPROVED") return "approved";
+    if (reviewDecision === "CHANGES_REQUESTED") return "changes_requested";
+    return "pending";
+  }
+
+  mapStatusCheckRollup(statusCheckRollup = []) {
+    if (!statusCheckRollup.length) return "pending";
+
+    const hasFailure = statusCheckRollup.some((check) => {
+      return check.conclusion === "FAILURE" || check.state === "FAILURE";
+    });
+    if (hasFailure) return "failure";
+
+    const hasPending = statusCheckRollup.some((check) => {
+      return check.status === "IN_PROGRESS" || check.status === "QUEUED" || check.state === "PENDING";
+    });
+    if (hasPending) return "pending";
+
+    const hasSuccess = statusCheckRollup.some((check) => {
+      return check.conclusion === "SUCCESS" || check.state === "SUCCESS";
+    });
+    if (hasSuccess) return "success";
+
+    return "pending";
   }
 
   /**
