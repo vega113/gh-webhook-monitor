@@ -55,6 +55,7 @@ button.secondary:hover{background:#3b424c}
 .toggle-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .empty{color:#484f58;font-style:italic;padding:14px;text-align:center}
 pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.4}
+textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;font-family:'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical}
 #jobDetailPanel{position:sticky;bottom:0;z-index:9}
 .hint{color:#8b949e;font-size:12px}
 @media (max-width: 800px){.container{padding:12px}.topbar{padding:10px 12px}.repo-head,.item-head,.toggle-row{flex-direction:column;align-items:flex-start}}
@@ -79,6 +80,17 @@ pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-hei
     </div>
     <div class="summary-grid" id="summaryGrid" style="margin-top:12px"></div>
   </div>
+  <div id="configSection" class="panel">
+    <div class="toggle-row">
+      <div>
+        <h2>Configuration</h2>
+        <div class="hint">Manage repositories, agents, prompts, and key settings without editing raw JSON.</div>
+      </div>
+      <button class="secondary" data-action="reloadConfigPanel">Reload config</button>
+    </div>
+    <div id="configStatus" class="hint" style="margin-top:10px">idle</div>
+    <div id="configPanel" style="margin-top:14px"></div>
+  </div>
   <div id="jobDetailPanel" class="panel" style="display:none">
     <h2>Log / Output</h2>
     <div class="hint" id="jobDetailMeta"></div>
@@ -89,7 +101,7 @@ pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-hei
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
-const state = { snapshot: null, selectedDetail: null, showAll: false, ws: null, reconnectTimer: null };
+const state = { snapshot: null, selectedDetail: null, showAll: false, ws: null, reconnectTimer: null, config: null };
 
 async function fetchJson(url) {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
@@ -261,6 +273,68 @@ async function loadSnapshot() {
   renderBoard();
 }
 
+function checked(v){ return v ? ' checked' : ''; }
+function selected(current, value){ return current === value ? ' selected' : ''; }
+
+function renderConfigPanel() {
+  const root = $('#configPanel');
+  const cfg = state.config;
+  if (!root) return;
+  if (!cfg) {
+    root.innerHTML = '<div class="empty">Loading config…</div>';
+    return;
+  }
+  const repos = Object.entries(cfg.repos || {}).map(([name, repo]) =>
+    '<tr><td class="item-sub">'+esc(name)+'</td><td class="item-sub">'+esc(repo.localPath)+'</td><td><input type="checkbox" data-role="repo-enabled" data-repo="'+esc(name)+'"'+checked(repo.enabled)+'</td><td><button class="secondary" data-action="removeRepoBtn" data-repo="'+esc(name)+'">Remove</button></td></tr>'
+  ).join('');
+  const promptRows = Object.entries(cfg.promptTemplates || {}).map(([key, value]) =>
+    '<div class="fact" style="grid-column:1/-1"><div class="k">'+esc(key)+'</div><textarea class="json-editor" style="min-height:120px" data-role="prompt" data-key="'+esc(key)+'">'+esc(value)+'</textarea></div>'
+  ).join('');
+  const repoOverrideRows = Object.keys(cfg.repos || {}).map((name) => {
+    const current = cfg.agentConfig?.perRepoOverride?.[name] || '';
+    return '<tr><td class="item-sub">'+esc(name)+'</td><td><select data-role="repo-agent" data-repo="'+esc(name)+'"><option value=""'+selected(current, '')+'>Default</option><option value="claude"'+selected(current, 'claude')+'>Claude</option><option value="codex"'+selected(current, 'codex')+'>Codex</option></select></td></tr>';
+  }).join('');
+
+  root.innerHTML =
+    '<div class="section-title">Repositories</div>'
+    + '<div class="item-card"><table style="width:100%"><tr><th>Name</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+repos+'</table>'
+    + '<div class="item-row" style="margin-top:12px"><input id="newRepoName" placeholder="owner/repo"><input id="newRepoPath" placeholder="/path/to/checkout" style="min-width:320px"><button data-action="addRepoBtn">Add repository</button><button data-action="saveRepos">Save repository states</button></div></div>'
+    + '<div class="section-title">Agents</div>'
+    + '<div class="item-card"><div class="item-grid">'
+    + '<div class="fact"><div class="k">Default Agent</div><div class="v"><select id="defaultAgentSelect"><option value="claude"'+selected(cfg.agentConfig?.defaultAgent,'claude')+'>Claude</option><option value="codex"'+selected(cfg.agentConfig?.defaultAgent,'codex')+'>Codex</option></select></div></div>'
+    + '<div class="fact"><div class="k">Codex Model</div><div class="v"><input id="codexModelInput" value="'+esc(cfg.agent?.codex?.model || '')+'"></div></div>'
+    + '<div class="fact"><div class="k">Codex Sandbox</div><div class="v"><select id="codexSandboxSelect"><option value="read-only"'+selected(cfg.agent?.codex?.sandbox,'read-only')+'>read-only</option><option value="workspace-write"'+selected(cfg.agent?.codex?.sandbox,'workspace-write')+'>workspace-write</option><option value="danger-full-access"'+selected(cfg.agent?.codex?.sandbox,'danger-full-access')+'>danger-full-access</option></select></div></div>'
+    + '<div class="fact"><div class="k">Codex Extra Args</div><div class="v"><input id="codexExtraArgsInput" value="'+esc(cfg.agent?.codex?.extraArgs || '')+'"></div></div>'
+    + '<div class="fact"><div class="k">Claude Model</div><div class="v"><input id="claudeModelInput" value="'+esc(cfg.agent?.claude?.model || '')+'"></div></div>'
+    + '</div><div class="section-title">Per-repository overrides</div><table style="width:100%"><tr><th>Repository</th><th>Agent</th></tr>'+repoOverrideRows+'</table><div class="item-row" style="margin-top:12px"><button data-action="saveDefaultAgent">Save default agent</button><button data-action="saveAgentSettings">Save agent settings</button><button data-action="saveRepoAgents">Save repo overrides</button></div></div>'
+    + '<div class="section-title">Prompts</div>'
+    + '<div class="item-card"><div class="item-grid">'+promptRows+'</div><div class="item-row" style="margin-top:12px"><button data-action="savePrompts">Save prompts</button></div></div>'
+    + '<div class="section-title">Settings</div>'
+    + '<div class="item-card"><div class="item-grid">'
+    + '<div class="fact"><div class="k">Max concurrent jobs</div><div class="v"><input id="maxJobsInput" type="number" min="1" value="'+esc(cfg.settings?.maxConcurrentJobs ?? 1)+'"></div></div>'
+    + '<div class="fact"><div class="k">Job timeout minutes</div><div class="v"><input id="timeoutInput" type="number" min="1" value="'+esc(cfg.settings?.jobTimeoutMinutes ?? 15)+'"></div></div>'
+    + '<div class="fact"><div class="k">Bot username</div><div class="v"><input id="botUsernameInput" value="'+esc(cfg.settings?.botUsername || '')+'"></div></div>'
+    + '<div class="fact"><div class="k">In-progress label</div><div class="v"><input id="inProgressLabelInput" value="'+esc(cfg.settings?.inProgressLabel || '')+'"></div></div>'
+    + '<div class="fact"><div class="k">Resolved label</div><div class="v"><input id="resolvedLabelInput" value="'+esc(cfg.settings?.agentResolvedLabel || '')+'"></div></div>'
+    + '<div class="fact"><div class="k">Trigger keywords</div><div class="v"><input id="triggerKeywordsInput" value="'+esc((cfg.settings?.triggerKeywords || []).join(', '))+'"></div></div>'
+    + '<div class="fact"><div class="k">Issue labels</div><div class="v"><input id="issueLabelsInput" value="'+esc((cfg.settings?.issueLabels || []).join(', '))+'"></div></div>'
+    + '<div class="fact"><div class="k">Ignored bots</div><div class="v"><input id="ignoredBotsInput" value="'+esc((cfg.settings?.ignoredBots || []).join(', '))+'"></div></div>'
+    + '</div><div class="item-row" style="margin-top:12px"><button data-action="saveSettingsPanel">Save settings</button></div></div>';
+}
+
+async function loadConfigPanel() {
+  const status = $('#configStatus');
+  if (status) status.textContent = 'loading';
+  state.config = await fetchJson('/api/config');
+  renderConfigPanel();
+  if (status) status.textContent = 'loaded';
+}
+
+function csvValue(id) {
+  const v = ($(id)?.value || '').trim();
+  return v ? v.split(',').map((s) => s.trim()).filter(Boolean) : [];
+}
+
 function connectWebSocket() {
   if (state.ws) state.ws.close();
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -303,10 +377,70 @@ document.addEventListener('click', async (e) => {
   } else if (action === 'closeDetail') {
     state.selectedDetail = null;
     renderJobDetail();
+  } else if (action === 'reloadConfigPanel') {
+    await loadConfigPanel();
+  } else if (action === 'addRepoBtn') {
+    const name = $('#newRepoName')?.value?.trim();
+    const localPath = $('#newRepoPath')?.value?.trim();
+    if (name && localPath) {
+      await fetchJson('/api/repos', { method: 'POST', body: JSON.stringify({ name, localPath, enabled: true }) });
+      await loadConfigPanel();
+      await loadSnapshot();
+    }
+  } else if (action === 'removeRepoBtn') {
+    const repo = btn.getAttribute('data-repo');
+    if (repo) {
+      const [owner, repoName] = repo.split('/');
+      await fetch('/api/repos/'+owner+'/'+repoName, { method: 'DELETE' });
+      await loadConfigPanel();
+      await loadSnapshot();
+    }
+  } else if (action === 'saveRepos') {
+    const nextRepos = structuredClone(state.config.repos || {});
+    document.querySelectorAll('[data-role="repo-enabled"]').forEach((el) => {
+      const repo = el.getAttribute('data-repo');
+      if (nextRepos[repo]) nextRepos[repo].enabled = el.checked;
+    });
+    await fetchJson('/api/config', { method: 'POST', body: JSON.stringify({ repos: nextRepos }) });
+    await loadConfigPanel();
+    await loadSnapshot();
+  } else if (action === 'saveDefaultAgent') {
+    await fetchJson('/api/agent', { method: 'POST', body: JSON.stringify({ defaultAgent: $('#defaultAgentSelect')?.value }) });
+    await loadConfigPanel();
+  } else if (action === 'saveAgentSettings') {
+    await fetchJson('/api/agent', { method: 'POST', body: JSON.stringify({ codex: { model: $('#codexModelInput')?.value, sandbox: $('#codexSandboxSelect')?.value, extraArgs: $('#codexExtraArgsInput')?.value }, claude: { model: $('#claudeModelInput')?.value } }) });
+    await loadConfigPanel();
+  } else if (action === 'saveRepoAgents') {
+    const overrides = document.querySelectorAll('[data-role="repo-agent"]');
+    for (const el of overrides) {
+      const repo = el.getAttribute('data-repo');
+      const [owner, repoName] = repo.split('/');
+      await fetchJson('/api/repos/'+owner+'/'+repoName+'/agent', { method: 'POST', body: JSON.stringify({ agent: el.value || null }) });
+    }
+    await loadConfigPanel();
+  } else if (action === 'savePrompts') {
+    const body = {};
+    document.querySelectorAll('[data-role="prompt"]').forEach((el) => {
+      body[el.getAttribute('data-key')] = el.value;
+    });
+    await fetchJson('/api/prompts', { method: 'POST', body: JSON.stringify(body) });
+    await loadConfigPanel();
+  } else if (action === 'saveSettingsPanel') {
+    await fetchJson('/api/settings', { method: 'POST', body: JSON.stringify({
+      maxConcurrentJobs: Number($('#maxJobsInput')?.value || 1),
+      jobTimeoutMinutes: Number($('#timeoutInput')?.value || 15),
+      botUsername: $('#botUsernameInput')?.value || '',
+      inProgressLabel: $('#inProgressLabelInput')?.value || '',
+      agentResolvedLabel: $('#resolvedLabelInput')?.value || '',
+      triggerKeywords: csvValue('#triggerKeywordsInput'),
+      issueLabels: csvValue('#issueLabelsInput'),
+      ignoredBots: csvValue('#ignoredBotsInput'),
+    })});
+    await loadConfigPanel();
   }
 });
 
-loadSnapshot().then(connectWebSocket).catch((err) => {
+Promise.all([loadSnapshot(), loadConfigPanel()]).then(connectWebSocket).catch((err) => {
   setConnection('error');
   console.error(err);
 });

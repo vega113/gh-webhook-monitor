@@ -91,7 +91,7 @@ function defaultConfig() {
         bin: "codex",
         model: "gpt-5.4",
         reasoningEffort: "high",
-        sandbox: "workspace-write",
+        sandbox: "danger-full-access",
         extraArgs: "--full-auto",
       },
     },

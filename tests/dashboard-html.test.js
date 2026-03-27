@@ -37,6 +37,10 @@ test("dashboard is a single-page live view driven by WebSockets", () => {
 
   assert.equal(html.includes("const TABS ="), false, "tabbed layout should be removed");
   assert.ok(html.includes('id="liveBoard"'), "missing live dashboard container");
+  assert.ok(html.includes("Configuration"), "missing configuration section");
+  assert.ok(html.includes('id="configSection"'), "missing config section container");
+  assert.ok(html.includes('data-action="saveDefaultAgent"') || html.includes("saveDefaultAgent"), "missing agent config controls");
+  assert.equal(html.includes('id="configEditor"'), false, "raw json config editor should be removed");
   assert.ok(html.includes('new WebSocket('), "missing WebSocket bootstrap");
   assert.ok(html.includes('/api/dashboard'), "missing snapshot fallback endpoint");
 });
