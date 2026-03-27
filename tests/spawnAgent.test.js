@@ -61,3 +61,16 @@ test("buildAgentCommand prepends shared safety guardrails to every agent prompt"
   assert.match(finalPrompt, /slow merge cadence/i);
   assert.match(finalPrompt, /Investigate the failing PR checks\./);
 });
+
+test("buildAgentCommand uses gpt-5.4-mini for mini-tier codex jobs", async () => {
+  const { buildAgentCommand } = await import("../src/actions/spawnAgent.js");
+
+  const { args } = buildAgentCommand("Inspect the failing check and report back.", {
+    effectiveAgent: "codex",
+    effectiveModel: "gpt-5.4-mini",
+  });
+
+  const modelIdx = args.indexOf("-m");
+  assert.equal(modelIdx >= 0, true);
+  assert.equal(args[modelIdx + 1], "gpt-5.4-mini");
+});

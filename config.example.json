@@ -33,6 +33,12 @@
       "branch": "main",
       "cooldownMinutes": 10,
       "triggerOnMerge": false
+    },
+    "agentRouter": {
+      "enabled": true,
+      "policy": "conservative-hybrid",
+      "codexMiniModel": "gpt-5.4-mini",
+      "codexFullModel": "gpt-5.4"
     }
   }
 }

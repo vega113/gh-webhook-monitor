@@ -55,7 +55,9 @@ function handlePullRequestConflict(payload, prStateCache) {
   );
 
   const repoPath = getRepoPath(repo);
-  spawnAgent(repoPath, prompt, jobKey, repo);
+  spawnAgent(repoPath, prompt, jobKey, repo, {
+    eventType: "merge_conflict",
+  });
 }
 
 /**

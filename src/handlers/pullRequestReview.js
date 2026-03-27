@@ -74,7 +74,10 @@ async function handlePullRequestReview(payload) {
 
   const jobKey = `review-${repo}-${pr.number}`;
   rateLimiter.recordExecution(pr.number, actionType);
-  spawnAgent(repoPath, prompt, jobKey, repo);
+  spawnAgent(repoPath, prompt, jobKey, repo, {
+    eventType: "pull_request_review",
+    reviewState: review.state,
+  });
 }
 
 export { handlePullRequestReview };

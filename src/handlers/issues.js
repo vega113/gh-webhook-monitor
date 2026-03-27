@@ -71,7 +71,11 @@ function createHandleIssues(deps = defaultDeps) {
     }
 
     deps.setCooldown(jobKey);
-    deps.spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issue.number);
+    deps.spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issue.number, {
+      eventType: isAgentTask ? "agent_task" : "issues",
+      labels,
+      requiresCodeWriting: isAgentTask,
+    });
   };
 }
 

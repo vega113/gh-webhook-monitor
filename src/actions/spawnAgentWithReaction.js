@@ -4,11 +4,16 @@ import { join } from "node:path";
 import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
 import { reactToIssue } from "./reactions.js";
-import { getActiveJobs, getJobHistory, buildAgentCommand } from "./spawnAgent.js";
+import {
+  getActiveJobs,
+  getJobHistory,
+  buildAgentCommand,
+  resolveAgentSelection,
+} from "./spawnAgent.js";
 
 const MAX_HISTORY = 200;
 
-function spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issueNumber) {
+function spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issueNumber, routeContext = {}) {
   const config = getConfig();
   const activeJobs = getActiveJobs();
   const jobHistory = getJobHistory();
@@ -30,8 +35,15 @@ function spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issueNumber) {
   // Acknowledge with eyes emoji immediately
   if (issueNumber) reactToIssue(repo, issueNumber, "eyes");
 
-  const agentType = getAgentForRepo(repo);
-  const { bin, args } = buildAgentCommand(prompt, agentType);
+  const routing = resolveAgentSelection(repo, jobKey, routeContext);
+  const agentType = routing.effectiveAgent || getAgentForRepo(repo);
+  const { bin, args } = buildAgentCommand(prompt, routing);
+  logEvent(
+    "ROUTER",
+    routing.tier,
+    jobKey,
+    `${routing.preferredAgent}->${routing.effectiveAgent} ${routing.effectiveModel || "(configured-default)"} ${routing.reason}`
+  );
   logEvent(
     "SPAWN",
     agentType,

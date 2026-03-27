@@ -32,7 +32,12 @@ function handleCheckSuite(payload) {
     repoPath,
     prompt,
     `ci-fail-${repo}-${suite.head_sha.slice(0, 8)}`,
-    repo
+    repo,
+    {
+      eventType: "check_suite",
+      inspectionOnly: true,
+      branch: suite.head_branch,
+    }
   );
 }
 

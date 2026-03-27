@@ -5,6 +5,7 @@ import { getConfig, getAgentForRepo } from "../config.js";
 import { logEvent, getLogDir } from "../logger.js";
 import { normalizeJobHistory } from "../jobHistory.js";
 import { clearActiveJob, recordActiveJob } from "../jobRuntimeState.js";
+import { routeAgentJob } from "../agentRouter.js";
 
 const activeJobs = new Map();
 let jobHistory = [];
@@ -55,16 +56,21 @@ function applyAgentSafetyPreamble(prompt) {
   return `${AGENT_SAFETY_PREAMBLE}${prompt}`;
 }
 
-function buildAgentCommand(prompt, agentType) {
+function buildAgentCommand(prompt, agentSelection) {
   const config = getConfig();
   const a = config.agent;
-  const agent = agentType || a.type;
+  const selection =
+    typeof agentSelection === "string"
+      ? { effectiveAgent: agentSelection }
+      : agentSelection || {};
+  const agent = selection.effectiveAgent || a.type;
   const finalPrompt = applyAgentSafetyPreamble(prompt);
 
   if (agent === "codex") {
     const c = a.codex;
     const args = ["exec"];
-    if (c.model) args.push("-m", c.model);
+    const model = selection.effectiveModel || c.model;
+    if (model) args.push("-m", model);
     if (c.reasoningEffort)
       args.push("--config", `model_reasoning_effort="${c.reasoningEffort}"`);
     if (c.sandbox) args.push("--sandbox", c.sandbox);
@@ -76,14 +82,27 @@ function buildAgentCommand(prompt, agentType) {
   // Default: Claude
   const c = a.claude;
   const args = ["--print"];
-  if (c.model) args.push("--model", c.model);
+  if (selection.effectiveModel || c.model) args.push("--model", selection.effectiveModel || c.model);
   if (c.allowedTools) args.push("--allowedTools", c.allowedTools);
   if (c.extraArgs) args.push(...c.extraArgs.split(/\s+/).filter(Boolean));
   args.push(finalPrompt);
   return { bin: c.bin || "claude", args };
 }
 
-function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
+function resolveAgentSelection(repoFullName, jobKey, routeContext = {}) {
+  const config = getConfig();
+  const preferredAgent = repoFullName
+    ? getAgentForRepo(repoFullName)
+    : config.agentConfig?.defaultAgent || config.agent.type;
+  return routeAgentJob({
+    config,
+    preferredAgent,
+    jobKey,
+    routeContext,
+  });
+}
+
+function spawnAgent(repoPath, prompt, jobKey, repoFullName, routeContext = {}) {
   const config = getConfig();
 
   if (activeJobs.has(jobKey)) {
@@ -100,6 +119,7 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
         repoPath,
         prompt,
         repoFullName,
+        routeContext,
         queuedAt: new Date().toISOString(),
       });
       if (queued) {
@@ -116,10 +136,15 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     return;
   }
 
-  const agentType = repoFullName
-    ? getAgentForRepo(repoFullName)
-    : config.agentConfig?.defaultAgent || config.agent.type;
-  const { bin, args } = buildAgentCommand(prompt, agentType);
+  const routing = resolveAgentSelection(repoFullName, jobKey, routeContext);
+  const agentType = routing.effectiveAgent;
+  const { bin, args } = buildAgentCommand(prompt, routing);
+  logEvent(
+    "ROUTER",
+    routing.tier,
+    jobKey,
+    `${routing.preferredAgent}->${routing.effectiveAgent} ${routing.effectiveModel || "(configured-default)"} ${routing.reason}`
+  );
   logEvent(
     "SPAWN",
     agentType,
@@ -149,6 +174,7 @@ function spawnAgent(repoPath, prompt, jobKey, repoFullName) {
     logFile,
     prompt,
     agentType,
+    routeContext,
     repoPath,
     repoFullName,
     output: outputChunks,
@@ -247,7 +273,14 @@ function processQueue() {
     );
 
     // Spawn the dequeued job
-    spawnAgent(nextJob.repoPath, nextJob.prompt, nextJob.jobKey, nextJob.repoFullName);
+    spawnAgent(
+      nextJob.repoPath,
+      nextJob.prompt,
+      nextJob.jobKey,
+      nextJob.repoFullName,
+      nextJob.routeContext || {}
+    );
+    
   }
 }
 
@@ -255,6 +288,7 @@ export {
   spawnAgent,
   buildAgentCommand,
   applyAgentSafetyPreamble,
+  resolveAgentSelection,
   getActiveJobs,
   getJobHistory,
   setJobQueue,

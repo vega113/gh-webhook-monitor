@@ -69,7 +69,11 @@ function createHandleIssueComment(deps = defaultDeps) {
         repo,
       });
       rateLimiter.recordExecution(issue.number, actionType);
-      deps.spawnAgent(repoPath, prompt, jobKey, repo);
+      deps.spawnAgent(repoPath, prompt, jobKey, repo, {
+        eventType: "issue_comment",
+        inspectionOnly: true,
+        isPullRequestComment: true,
+      });
     } else {
       // Issue comment — react if the issue has agent-task label OR comment has trigger keyword
       const labels = (issue.labels || []).map((l) => l.name);
@@ -107,7 +111,11 @@ function createHandleIssueComment(deps = defaultDeps) {
       }
 
       deps.setCooldown(`issue-${repo}-${issue.number}`);
-      deps.spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issue.number);
+      deps.spawnAgentWithReaction(repoPath, prompt, jobKey, repo, issue.number, {
+        eventType: "issue_followup",
+        labels,
+        requiresCodeWriting: true,
+      });
     }
   };
 }

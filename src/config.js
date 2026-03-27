@@ -96,6 +96,12 @@ function defaultConfig() {
       maxConcurrentJobs: 3,
       jobTimeoutMinutes: 15,
       mergeableCheckInterval: 60000,
+      agentRouter: {
+        enabled: true,
+        policy: "conservative-hybrid",
+        codexMiniModel: "gpt-5.4-mini",
+        codexFullModel: "gpt-5.4",
+      },
       postMergeGate: {
         enabled: false,
         workflowFile: ".github/workflows/build.yml",
@@ -173,6 +179,10 @@ function loadConfig() {
       settings: {
         ...def.settings,
         ...savedSettings,
+        agentRouter: {
+          ...def.settings.agentRouter,
+          ...(savedSettings.agentRouter || {}),
+        },
         postMergeGate: {
           ...def.settings.postMergeGate,
           ...(savedSettings.postMergeGate || {}),
