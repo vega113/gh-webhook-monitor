@@ -28,3 +28,37 @@ test("monitoring prompt documents secret handling and merge freshness guardrails
   assertContains(monitoringPrompt, "Refresh from the latest base branch before merging", "monitoring-agent.md");
   assertContains(monitoringPrompt, "slow merge cadence", "monitoring-agent.md");
 });
+
+test("merge conflict guidance preserves features from both branches and forbids destructive resolutions", () => {
+  assertContains(
+    DEFAULT_PROMPT_TEMPLATES.merge_conflict,
+    "preserve newly added behavior from both branches unless clearly obsolete",
+    "merge_conflict"
+  );
+  assertContains(
+    DEFAULT_PROMPT_TEMPLATES.merge_conflict,
+    "do not resolve conflicts by dropping code just to make the build pass",
+    "merge_conflict"
+  );
+  assertContains(
+    DEFAULT_PROMPT_TEMPLATES.merge_conflict,
+    "cannot prove which side is correct, escalate",
+    "merge_conflict"
+  );
+
+  assertContains(
+    monitoringPrompt,
+    "preserve newly added behavior from both branches unless clearly obsolete",
+    "monitoring-agent.md"
+  );
+  assertContains(
+    monitoringPrompt,
+    "do not resolve conflicts by dropping code just to make the build pass",
+    "monitoring-agent.md"
+  );
+  assertContains(
+    monitoringPrompt,
+    "cannot prove which side is correct, escalate",
+    "monitoring-agent.md"
+  );
+});

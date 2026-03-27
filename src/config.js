@@ -56,10 +56,13 @@ Instructions:
 3. Checkout the branch: \`git fetch origin && git checkout {{headBranch}}\`
 4. Try to rebase: \`git rebase origin/{{baseBranch}}\`
 5. If conflicts appear, resolve them using \`git status\` to find conflicted files
-6. Edit conflicted files to remove conflict markers (<<<<, ====, >>>>)
-7. After resolving all conflicts: \`git add .\` and \`git rebase --continue\`
-8. Force push the resolved branch: \`git push --force-with-lease origin {{headBranch}}\`
-9. Post a comment on the PR summarizing the resolution: \`gh pr comment {{prNumber}} --body "Merge conflicts have been resolved."\`
+6. Preserve newly added behavior from both branches unless clearly obsolete
+7. Do not resolve conflicts by dropping code just to make the build pass
+8. If you cannot prove which side is correct, escalate instead of choosing destructively
+9. Edit conflicted files to remove conflict markers (<<<<, ====, >>>>)
+10. After resolving all conflicts: \`git add .\` and \`git rebase --continue\`
+11. Force push the resolved branch: \`git push --force-with-lease origin {{headBranch}}\`
+12. Post a comment on the PR summarizing the resolution: \`gh pr comment {{prNumber}} --body "Merge conflicts have been resolved."\`
 
 If the conflicts are too complex to auto-resolve, post a comment explaining what needs manual intervention.`,
 };
