@@ -11,21 +11,26 @@ function setupStatusRoutes(app, statusCache) {
     try {
       const prStateCache = getPRStateCache();
       const config = getConfig();
+      const statuses = [];
       if (prStateCache) {
         for (const repo of Object.keys(config.repos || {})) {
           try {
             prStateCache.ensureRepoSynced(repo);
+            const allPRs = prStateCache.getAllOpenPRs(repo);
+            for (const pr of allPRs) {
+              const status = await statusCache.refresh(repo, pr.prNumber);
+              if (status) statuses.push(status);
+            }
           } catch (err) {
             logEvent("ERROR", "status-api-sync", repo, err.message);
           }
         }
       }
-      const allStatuses = statusCache.getAllValid();
       res.json({
         ok: true,
-        statuses: allStatuses,
+        statuses,
         timestamp: new Date().toISOString(),
-        count: allStatuses.length,
+        count: statuses.length,
       });
     } catch (err) {
       logEvent("ERROR", "status-api", "system", `Failed to get statuses: ${err.message}`);
