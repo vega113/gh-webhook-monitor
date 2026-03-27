@@ -256,7 +256,7 @@ function agentTab(cfg) {
     + '<button onclick="saveAgent(\\'claude\\')">Save Claude Settings</button></div>'
     + '<div class="panel" id="codexCfg" style="display:'+(a.type==='codex'?'block':'none')+'"><h2>Codex CLI Settings</h2>'
     + field('Codex CLI path','xBin',a.codex.bin,'codex')
-    + field('Model','xModel',a.codex.model,'gpt-5.3-codex')
+    + field('Model','xModel',a.codex.model,'gpt-5.4')
     + '<div class="row"><label style="width:180px">Reasoning effort</label><select id="xReason" style="width:200px"><option value="xhigh"'+(a.codex.reasoningEffort==='xhigh'?' selected':'')+'>xhigh (reviews/analysis)</option><option value="high"'+(a.codex.reasoningEffort==='high'?' selected':'')+'>high (code edits)</option><option value="medium"'+(a.codex.reasoningEffort==='medium'?' selected':'')+'>medium</option><option value="low"'+(a.codex.reasoningEffort==='low'?' selected':'')+'>low</option></select></div>'
     + '<div class="row"><label style="width:180px">Sandbox</label><select id="xSandbox" style="width:200px"><option value="read-only"'+(a.codex.sandbox==='read-only'?' selected':'')+'>read-only</option><option value="workspace-write"'+(a.codex.sandbox==='workspace-write'?' selected':'')+'>workspace-write</option><option value="danger-full-access"'+(a.codex.sandbox==='danger-full-access'?' selected':'')+'>danger-full-access</option></select></div>'
     + field('Extra args','xExtra',a.codex.extraArgs,'--full-auto')
