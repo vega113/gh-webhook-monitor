@@ -80,6 +80,13 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
     </div>
     <div class="summary-grid" id="summaryGrid" style="margin-top:12px"></div>
   </div>
+  <div id="liveBoard"></div>
+  <div id="jobDetailPanel" class="panel" style="display:none">
+    <h2>Log / Output</h2>
+    <div class="hint" id="jobDetailMeta"></div>
+    <div class="item-row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div>
+    <pre class="log" id="jobDetailOut"></pre>
+  </div>
   <details id="configSection" class="panel">
     <summary style="cursor:pointer;font-weight:600;color:#58a6ff">Configuration</summary>
     <div class="toggle-row" style="margin-top:12px">
@@ -89,13 +96,6 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
     <div id="configStatus" class="hint" style="margin-top:10px">idle</div>
     <div id="configPanel" style="margin-top:14px"></div>
   </details>
-  <div id="jobDetailPanel" class="panel" style="display:none">
-    <h2>Log / Output</h2>
-    <div class="hint" id="jobDetailMeta"></div>
-    <div class="item-row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div>
-    <pre class="log" id="jobDetailOut"></pre>
-  </div>
-  <div id="liveBoard"></div>
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
