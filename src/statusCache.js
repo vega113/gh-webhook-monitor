@@ -84,7 +84,8 @@ class StatusCache {
       unresolvedThreads: (prState.threads || []).filter((t) => !t.isResolved)
         .length,
       blockers: this.determineBlockers(prState),
-      lastUpdated: this.prStateCache.getLastUpdateTime(repo, prNumber),
+      lastUpdated: this.prStateCache.getLastObservedTime(repo, prNumber),
+      openedAt: prState.openedAt || null,
       isDraft: prState.isDraft || false,
     };
 

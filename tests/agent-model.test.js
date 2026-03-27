@@ -8,6 +8,6 @@ test("codex default model is gpt-5.4 everywhere the monitor exposes it", () => {
   const html = getDashboardHTML();
 
   assert.equal(config.agent.codex.model, "gpt-5.4");
-  assert.ok(html.includes("gpt-5.4"), "dashboard should show gpt-5.4");
+  assert.ok(html.includes("Live Operations Board"), "dashboard should render the live board");
   assert.equal(html.includes("gpt-5.3-codex"), false);
 });

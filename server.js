@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import express from "express";
 import { loadConfig, getConfig, requireWebhookSecret } from "./src/config.js";
 import { logEvent } from "./src/logger.js";
@@ -22,6 +23,8 @@ import { getRepoPath } from "./src/config.js";
 import { JobQueue } from "./src/jobQueue.js";
 import { recoverActiveJobs } from "./src/jobRuntimeState.js";
 import { buildWebhookCacheUpdate } from "./src/webhookCacheUpdate.js";
+import { createLiveHub } from "./src/dashboard/liveHub.js";
+import { collectDashboardSnapshot } from "./src/dashboard/data.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -57,6 +60,7 @@ const app = express();
 app.use(express.json({ verify: (req, _res, buf) => (req.rawBody = buf) }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
+const server = createServer(app);
 
 // Webhook endpoint
 app.post("/webhook", async (req, res) => {
@@ -160,12 +164,17 @@ app.post("/webhook", async (req, res) => {
       logEvent(event, payload.action || "", repo, "unhandled");
   }
 
+  liveHub.broadcastSnapshot().catch((err) => {
+    logEvent("ERROR", "dashboard-live", "system", err.message);
+  });
+
   res.json({ ok: true });
 });
 
 // Setup API routes
 const statusCache = getStatusCache();
 setupRoutes(app, rateLimiter, dispatcher, statusCache, jobQueue);
+const liveHub = createLiveHub(server, () => collectDashboardSnapshot(getConfig(), statusCache));
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));
@@ -299,6 +308,9 @@ function startStatusPolling() {
           );
         }
       }
+      liveHub.broadcastSnapshot().catch((err) => {
+        logEvent("ERROR", "dashboard-live", "system", err.message);
+      });
     } catch (err) {
       logEvent(
         "ERROR",
@@ -355,7 +367,7 @@ If the conflicts are too complex to auto-resolve, post a comment explaining what
 }
 
 // Start server and polling
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log("\n🌊 gh-webhook-monitor listening on http://localhost:" + PORT);
   console.log("   Dashboard:  http://localhost:" + PORT + "/");
   console.log("   Agent type: " + config.agent.type);

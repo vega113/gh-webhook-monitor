@@ -56,6 +56,8 @@ class PRStateCache {
     return {
       prNumber,
       repo,
+      openedAt: null,
+      lastObservedAt: null,
       mergeable: null, // null = unknown
       isDraft: false,
       base: null, // base branch name
@@ -78,6 +80,8 @@ class PRStateCache {
       state = {
         prNumber,
         repo,
+        openedAt: null,
+        lastObservedAt: null,
         mergeable: null,
         isDraft: false,
         checkStatus: "pending",
@@ -96,6 +100,7 @@ class PRStateCache {
       state.title = pr.title;
       state.body = pr.body;
       state.base = pr.base?.ref; // Track base branch
+      state.lastObservedAt = new Date().toISOString();
     }
 
     if (webhookData.type === "pull_request_review") {
@@ -110,12 +115,14 @@ class PRStateCache {
       } else {
         state.reviews.push(review);
       }
+      state.lastObservedAt = new Date().toISOString();
     }
 
     if (webhookData.type === "check_suite") {
       const suite = webhookData.checkSuite;
       state.checkStatus = suite.conclusion || "pending";
       state.checks = webhookData.checks || [];
+      state.lastObservedAt = new Date().toISOString();
     }
 
     // Update cache expiration to now (fresh)
@@ -145,7 +152,7 @@ class PRStateCache {
         }));
 
     const raw = run(
-      `gh pr list --repo ${repo} --state open --json number,title,isDraft,mergeStateStatus,reviewDecision,baseRefName,statusCheckRollup`
+      `gh pr list --repo ${repo} --state open --json number,title,isDraft,mergeStateStatus,reviewDecision,baseRefName,statusCheckRollup,createdAt`
     );
     const prs = JSON.parse(raw);
     const seen = new Set();
@@ -167,12 +174,14 @@ class PRStateCache {
         prNumber: pr.number,
         repo,
         title: pr.title,
+        openedAt: pr.createdAt || existing.openedAt || null,
         isDraft: pr.isDraft,
         base: pr.baseRefName,
         mergeable: this.mapMergeStateStatus(pr.mergeStateStatus),
         reviewState: this.mapReviewDecision(pr.reviewDecision),
         checkStatus: this.mapStatusCheckRollup(pr.statusCheckRollup),
         checks: pr.statusCheckRollup || [],
+        lastObservedAt: new Date().toISOString(),
       };
 
       this.cache.set(cacheKey, {
@@ -287,6 +296,11 @@ class PRStateCache {
     return timestamp ? new Date(timestamp).toISOString() : null;
   }
 
+  getLastObservedTime(repo, prNumber) {
+    const cacheKey = `${repo}#${prNumber}`;
+    return this.cache.get(cacheKey)?.state?.lastObservedAt || null;
+  }
+
   /**
    * List all cached open PRs for a repo with optional base branch filter
    * @param {string} repo - Repository in format owner/repo
@@ -305,7 +319,7 @@ class PRStateCache {
         openPRs.push({
           prNumber: state.prNumber,
           title: state.title || "Unknown",
-          lastUpdated: this.getLastUpdateTime(repo, state.prNumber),
+          lastUpdated: this.getLastObservedTime(repo, state.prNumber),
           base: state.base,
         });
       }

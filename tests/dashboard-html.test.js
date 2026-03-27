@@ -3,23 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { getDashboardHTML } from "../src/dashboard/html.js";
 
-test("jobs dashboard exposes a persistent job detail panel with copy actions", () => {
+test("dashboard exposes a persistent in-page job detail panel", () => {
   const html = getDashboardHTML();
-  const panelIndex = html.indexOf('id="jobDetailPanel"');
-  const historyIndex = html.indexOf('id="jHist"');
 
   assert.ok(html.includes("jobDetailPanel"), "missing persistent job detail panel");
   assert.ok(html.includes("Absolute log path"), "missing absolute log path label");
-  assert.ok(html.includes("Copy path"), "missing copy path action");
-  assert.ok(html.includes("Copy output"), "missing copy output action");
-  assert.ok(panelIndex >= 0 && historyIndex >= 0 && panelIndex < historyIndex,
-    "job detail panel should render above job history so clicks reveal content in-view");
-  assert.ok(
-    html.includes("insertBefore(panel, historyPanel)"),
-    "missing runtime guard that moves the job detail panel above history"
-  );
-  assert.ok(html.includes('id="sPing"'), "missing ping badge");
-  assert.ok(html.includes("getRecentPingCount"), "missing ping count helper");
+  assert.ok(html.includes("Captured output for"), "missing output detail label");
+  assert.ok(html.includes('data-action="openJobDetail"') || html.includes("openJobDetail"), "missing log detail open action");
+  assert.ok(html.includes('data-action="closeDetail"') || html.includes("closeDetail"), "missing close detail action");
 });
 
 test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () => {
@@ -39,4 +30,13 @@ test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () 
     [0, 0, 1, 0],
     "favicon.ico should be a real ICO file"
   );
+});
+
+test("dashboard is a single-page live view driven by WebSockets", () => {
+  const html = getDashboardHTML();
+
+  assert.equal(html.includes("const TABS ="), false, "tabbed layout should be removed");
+  assert.ok(html.includes('id="liveBoard"'), "missing live dashboard container");
+  assert.ok(html.includes('new WebSocket('), "missing WebSocket bootstrap");
+  assert.ok(html.includes('/api/dashboard'), "missing snapshot fallback endpoint");
 });

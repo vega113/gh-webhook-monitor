@@ -9,6 +9,7 @@ import { setupDispatcherRoutes } from "./dispatcherApi.js";
 import { setupStatusRoutes } from "./statusApi.js";
 import { getIssueAssignees } from "../issueCoordination.js";
 import { getPostMergeGateStatus } from "../postMergeGateState.js";
+import { collectDashboardSnapshot } from "../dashboard/data.js";
 
 function setupRoutes(
   app,
@@ -121,6 +122,15 @@ function setupRoutes(
   // Event log endpoints
   app.get("/api/events", (_req, res) => {
     res.json(getEventLog());
+  });
+
+  app.get("/api/dashboard", async (_req, res) => {
+    try {
+      const snapshot = await collectDashboardSnapshot(getConfig(), statusCache);
+      res.json({ ok: true, snapshot });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Jobs endpoints
