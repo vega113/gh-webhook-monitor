@@ -80,17 +80,15 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
     </div>
     <div class="summary-grid" id="summaryGrid" style="margin-top:12px"></div>
   </div>
-  <div id="configSection" class="panel">
-    <div class="toggle-row">
-      <div>
-        <h2>Configuration</h2>
-        <div class="hint">Manage repositories, agents, prompts, and key settings without editing raw JSON.</div>
-      </div>
+  <details id="configSection" class="panel">
+    <summary style="cursor:pointer;font-weight:600;color:#58a6ff">Configuration</summary>
+    <div class="toggle-row" style="margin-top:12px">
+      <div class="hint">Manage repositories, agents, prompts, and key settings without editing raw JSON.</div>
       <button class="secondary" data-action="reloadConfigPanel">Reload config</button>
     </div>
     <div id="configStatus" class="hint" style="margin-top:10px">idle</div>
     <div id="configPanel" style="margin-top:14px"></div>
-  </div>
+  </details>
   <div id="jobDetailPanel" class="panel" style="display:none">
     <h2>Log / Output</h2>
     <div class="hint" id="jobDetailMeta"></div>
