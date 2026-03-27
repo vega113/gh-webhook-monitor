@@ -68,6 +68,7 @@ async function handlePullRequestReview(payload) {
     prTitle: pr.title,
     reviewer: review.user.login,
     reviewState: review.state,
+    headBranch: pr.head?.ref || "unknown",
     repo,
   });
 

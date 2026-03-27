@@ -9,6 +9,7 @@ test("syncOpenPRsFromGitHub hydrates cache from gh pr list output", async () => 
     {
       number: 398,
       title: "fix: restore search bootstrap on init to fix blank panel and archive action",
+      headRefName: "fix/search-panel-blank-bootstrap",
       isDraft: false,
       mergeStateStatus: "DIRTY",
       reviewDecision: "",
@@ -20,6 +21,7 @@ test("syncOpenPRsFromGitHub hydrates cache from gh pr list output", async () => 
     {
       number: 395,
       title: "docs: agents must read session memory at start of each session",
+      headRefName: "docs/session-memory",
       isDraft: false,
       mergeStateStatus: "BLOCKED",
       reviewDecision: "",
@@ -38,6 +40,7 @@ test("syncOpenPRsFromGitHub hydrates cache from gh pr list output", async () => 
   const dirty = await cache.get("vega113/incubator-wave", 398);
   assert.equal(dirty.mergeable, false);
   assert.equal(dirty.base, "main");
+  assert.equal(dirty.headBranch, "fix/search-panel-blank-bootstrap");
   assert.equal(dirty.title.includes("restore search bootstrap"), true);
 
   const pending = await cache.get("vega113/incubator-wave", 395);

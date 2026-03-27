@@ -347,6 +347,7 @@ function startStatusPolling() {
               .replace(/\{\{prTitle\}\}/g, pr.title || "Unknown")
               .replace(/\{\{reviewer\}\}/g, pr.latestReviews?.[0]?.author?.login || "reviewer")
               .replace(/\{\{reviewState\}\}/g, pr.latestReviews?.[0]?.state || pr.reviewState || "commented")
+              .replace(/\{\{headBranch\}\}/g, pr.headBranch || "unknown")
               .replace(/\{\{repo\}\}/g, repo);
             rateLimiter.recordExecution(pr.prNumber, "spawnAgent");
             logEvent("SPAWN", "review-backlog", repo, `PR #${pr.prNumber}: spawning review follow-up from status scan`);

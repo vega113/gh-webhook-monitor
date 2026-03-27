@@ -8,7 +8,8 @@ const CONFIG_PATH = join(dirname(__dirname), "config.json");
 const DEFAULT_PROMPT_TEMPLATES = {
   pull_request_review: `A review was submitted on PR #{{prNumber}} ("{{prTitle}}") by {{reviewer}} (state: {{reviewState}}).
 Read the review comments with \`gh pr view {{prNumber}} --comments\` and \`gh api repos/{{repo}}/pulls/{{prNumber}}/comments\`.
-If there are actionable code review comments, fix them, commit, and push. If the comments are just informational or approvals, do nothing. Be concise.`,
+Work on the PR's existing branch only: \`git fetch origin && git checkout {{headBranch}}\` (or create it to track \`origin/{{headBranch}}\` if missing locally).
+If there are actionable code review comments, fix them on \`{{headBranch}}\`, commit, and push back to that same branch. Do not create a new branch or replacement PR. If the comments are just informational or approvals, do nothing. Be concise.`,
   check_suite: `CI failed on the default branch ({{branch}}) at commit {{sha}}.
 Check the failure with \`gh run list --limit 3\` and \`gh run view --log-failed\`.
 Investigate the failure, fix if possible, commit and push. If it's a flaky test or infrastructure issue, report what you found.`,
@@ -17,7 +18,7 @@ Read the issue with \`gh issue view {{issueNumber}}\`.
 If it's a deploy failure, investigate the deploy logs and fix the issue. If it's tagged auto-fix, investigate and fix the reported bug.`,
   issue_comment: `A comment was posted on PR #{{prNumber}} ("{{prTitle}}") by {{author}}: "{{body}}".
 Read the full PR context with \`gh pr view {{prNumber}}\`.
-Address what's being asked — fix code issues, respond to questions, etc. Commit and push if code changes are needed.`,
+Address what's being asked — fix code issues, respond to questions, etc. If code changes are needed, make them on the PR's existing branch and push back to that same branch instead of creating a new one.`,
   agent_task: `GitHub issue #{{issueNumber}} ("{{issueTitle}}") was created as an agent task.
 Labels: {{labels}}
 

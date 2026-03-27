@@ -22,6 +22,13 @@ test("agent task templates instruct agents not to commit secrets and to refresh 
   assertContains(DEFAULT_PROMPT_TEMPLATES.issue_followup, "rebase onto the latest", "issue_followup");
 });
 
+test("review prompts require updating the existing PR branch instead of creating a new one", () => {
+  assertContains(DEFAULT_PROMPT_TEMPLATES.pull_request_review, "existing branch", "pull_request_review");
+  assertContains(DEFAULT_PROMPT_TEMPLATES.pull_request_review, "Do not create a new branch", "pull_request_review");
+  assertContains(DEFAULT_PROMPT_TEMPLATES.issue_comment, "existing branch", "issue_comment");
+  assertContains(DEFAULT_PROMPT_TEMPLATES.issue_comment, "instead of creating a new one", "issue_comment");
+});
+
 test("monitoring prompt documents secret handling and merge freshness guardrails", () => {
   assertContains(monitoringPrompt, "Never commit secrets", "monitoring-agent.md");
   assertContains(monitoringPrompt, "Use GitHub Actions secrets", "monitoring-agent.md");

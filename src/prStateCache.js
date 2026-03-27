@@ -100,6 +100,7 @@ class PRStateCache {
       state.title = pr.title;
       state.body = pr.body;
       state.base = pr.base?.ref; // Track base branch
+      state.headBranch = pr.head?.ref || state.headBranch || null;
       state.lastObservedAt = new Date().toISOString();
     }
 
@@ -177,6 +178,7 @@ class PRStateCache {
         openedAt: pr.createdAt || existing.openedAt || null,
         isDraft: pr.isDraft,
         base: pr.baseRefName,
+        headBranch: pr.headRefName || existing.headBranch || null,
         mergeable: this.mapMergeStateStatus(pr.mergeStateStatus),
         reviewState: this.mapReviewDecision(pr.reviewDecision),
         checkStatus: this.mapStatusCheckRollup(pr.statusCheckRollup),
