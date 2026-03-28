@@ -238,10 +238,11 @@ Open http://localhost:3847 in your browser.
     "type": "codex",
     "codex": {
       "bin": "codex",
-      "model": "gpt-5.3-codex",
+      "model": "gpt-5.4",
       "reasoningEffort": "high",
-      "sandbox": "workspace-write",
-      "extraArgs": "--full-auto"
+      "webSearch": "live",
+      "sandbox": "danger-full-access",
+      "extraArgs": ""
     }
   }
 }
@@ -249,10 +250,13 @@ Open http://localhost:3847 in your browser.
 
 | Setting | Values | Default |
 |---|---|---|
-| `model` | `gpt-5.3-codex`, `o4-mini`, etc. | `gpt-5.3-codex` |
+| `model` | `gpt-5.4`, `gpt-5.4-mini`, etc. | `gpt-5.4` |
 | `reasoningEffort` | `xhigh`, `high`, `medium`, `low` | `high` |
-| `sandbox` | `read-only`, `workspace-write`, `danger-full-access` | `workspace-write` |
-| `extraArgs` | Any CLI flags | `--full-auto` |
+| `webSearch` | `live`, `off` | `live` |
+| `sandbox` | `read-only`, `workspace-write`, `danger-full-access` | `danger-full-access` |
+| `extraArgs` | Any CLI flags | `""` |
+
+When using `danger-full-access`, avoid `--full-auto` in `extraArgs` because it forces `workspace-write` and can prevent git operations that need unrestricted access.
 
 Switch between agents via the web dashboard **Agent** tab or by editing `config.json`.
 

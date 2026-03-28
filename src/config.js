@@ -92,8 +92,9 @@ function defaultConfig() {
         bin: "codex",
         model: "gpt-5.4",
         reasoningEffort: "high",
+        webSearch: "live",
         sandbox: "danger-full-access",
-        extraArgs: "--full-auto",
+        extraArgs: "",
       },
     },
     settings: {

@@ -74,3 +74,43 @@ test("buildAgentCommand uses gpt-5.4-mini for mini-tier codex jobs", async () =>
   assert.equal(modelIdx >= 0, true);
   assert.equal(args[modelIdx + 1], "gpt-5.4-mini");
 });
+
+test("buildAgentCommand forces bypass mode for danger-full-access and strips --full-auto", async () => {
+  const { buildAgentCommand } = await import("../src/actions/spawnAgent.js");
+
+  const configOverride = {
+    agent: {
+      type: "codex",
+      codex: {
+        bin: "codex",
+        model: "gpt-5.4",
+        reasoningEffort: "xhigh",
+        webSearch: "live",
+        sandbox: "danger-full-access",
+        extraArgs: "--full-auto --config web_search=\"live\"",
+      },
+      claude: {
+        bin: "claude",
+        model: "",
+        allowedTools: "",
+        extraArgs: "",
+      },
+    },
+  };
+
+  const { args } = buildAgentCommand(
+    "Investigate and fix the failing automation.",
+    "codex",
+    configOverride
+  );
+
+  assert.equal(
+    args.includes("--dangerously-bypass-approvals-and-sandbox"),
+    true
+  );
+  assert.equal(args.includes("--full-auto"), false);
+  const sandboxIdx = args.indexOf("--sandbox");
+  assert.equal(sandboxIdx >= 0, true);
+  assert.equal(args[sandboxIdx + 1], "danger-full-access");
+  assert.equal(args.includes('web_search="live"'), true);
+});

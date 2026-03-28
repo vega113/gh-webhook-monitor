@@ -67,6 +67,18 @@ class RateLimiter {
     return elapsed >= interval;
   }
 
+  getRemainingSeconds(prNumber, actionType) {
+    const prData = this.executionTimes.get(prNumber);
+    if (!prData) return 0;
+
+    const lastExecution = prData.get(actionType);
+    if (!lastExecution) return 0;
+
+    const interval = this._getInterval(actionType);
+    const elapsed = (Date.now() - lastExecution) / 1000;
+    return Math.max(0, interval - elapsed);
+  }
+
   /**
    * Record an execution for an action on a PR
    * @param {number} prNumber - Pull request number

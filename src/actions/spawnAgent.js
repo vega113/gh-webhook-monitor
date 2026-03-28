@@ -56,8 +56,8 @@ function applyAgentSafetyPreamble(prompt) {
   return `${AGENT_SAFETY_PREAMBLE}${prompt}`;
 }
 
-function buildAgentCommand(prompt, agentSelection) {
-  const config = getConfig();
+function buildAgentCommand(prompt, agentSelection, configOverride = null) {
+  const config = configOverride || getConfig();
   const a = config.agent;
   const selection =
     typeof agentSelection === "string"
@@ -69,12 +69,31 @@ function buildAgentCommand(prompt, agentSelection) {
   if (agent === "codex") {
     const c = a.codex;
     const args = ["exec"];
+    const rawExtraArgs = c.extraArgs
+      ? c.extraArgs.split(/\s+/).filter(Boolean)
+      : [];
+    const hasBypassFlag = rawExtraArgs.includes(
+      "--dangerously-bypass-approvals-and-sandbox"
+    );
+    const shouldBypassSandbox =
+      hasBypassFlag || c.sandbox === "danger-full-access";
+    const filteredExtraArgs = rawExtraArgs.filter((arg) => {
+      if (arg === "--dangerously-bypass-approvals-and-sandbox") return false;
+      // --full-auto forces workspace-write and conflicts with bypass mode.
+      if (shouldBypassSandbox && arg === "--full-auto") return false;
+      return true;
+    });
+
+    if (shouldBypassSandbox) {
+      args.push("--dangerously-bypass-approvals-and-sandbox");
+    }
     const model = selection.effectiveModel || c.model;
     if (model) args.push("-m", model);
     if (c.reasoningEffort)
       args.push("--config", `model_reasoning_effort="${c.reasoningEffort}"`);
+    if (c.webSearch) args.push("--config", `web_search="${c.webSearch}"`);
     if (c.sandbox) args.push("--sandbox", c.sandbox);
-    if (c.extraArgs) args.push(...c.extraArgs.split(/\s+/).filter(Boolean));
+    if (filteredExtraArgs.length > 0) args.push(...filteredExtraArgs);
     args.push(finalPrompt);
     return { bin: c.bin || "codex", args };
   }
