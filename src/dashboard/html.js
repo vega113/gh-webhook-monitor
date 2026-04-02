@@ -1,3 +1,24 @@
+function formatDashboardTimestamp(value, options = {}) {
+  const fallback = options.fallback ?? "-";
+  if (!value) return fallback;
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const formatterOptions = {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    ...(options.timeZone ? { timeZone: options.timeZone } : {}),
+  };
+
+  return new Intl.DateTimeFormat(options.locale, formatterOptions).format(date);
+}
+
 function getDashboardHTML() {
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -100,6 +121,7 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
 <script>
 const $ = (s) => document.querySelector(s);
 const state = { snapshot: null, selectedDetail: null, showAll: false, ws: null, reconnectTimer: null, config: null };
+const formatDashboardTimestamp = ${formatDashboardTimestamp.toString()};
 
 async function fetchJson(url) {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
@@ -152,7 +174,7 @@ function renderSummary() {
 function renderHistoryItem(job) {
   const logBtn = '<button class="secondary" data-action="openJobDetail" data-mode="log" data-jobkey="'+esc(job.key)+'">Log</button>';
   const outBtn = '<button class="secondary" data-action="openJobDetail" data-mode="output" data-jobkey="'+esc(job.key)+'">Output</button>';
-  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(job.code)+' · '+esc(job.duration)+' · '+esc(job.startTime)+'</div></div><div class="item-row">'+logBtn+outBtn+'</div></div>';
+  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(job.code)+' · '+esc(job.duration)+' · '+esc(formatDashboardTimestamp(job.startTime, { fallback: "unknown" }))+'</div></div><div class="item-row">'+logBtn+outBtn+'</div></div>';
 }
 
 function renderPrCard(pr) {
@@ -169,7 +191,7 @@ function renderPrCard(pr) {
     + '<div class="fact"><div class="k">PR Age</div><div class="v">'+esc(fmtMinutes(pr.prAgeMinutes))+'</div></div>'
     + '<div class="fact"><div class="k">Iterations</div><div class="v">'+esc(pr.iterationCount || 0)+'</div></div>'
     + '<div class="fact"><div class="k">Waiting For</div><div class="v">'+esc(pr.waitingFor || 'Unknown')+'</div></div>'
-    + '<div class="fact"><div class="k">Last Updated</div><div class="v">'+esc(pr.lastUpdated || 'unknown')+'</div></div>'
+    + '<div class="fact"><div class="k">Last Updated</div><div class="v">'+esc(formatDashboardTimestamp(pr.lastUpdated, { fallback: 'unknown' }))+'</div></div>'
     + blockers
     + '</div>'
     + '<div class="section-title">Recent Jobs / Actions</div>'
@@ -216,7 +238,7 @@ function renderBoard() {
       + '</div>';
   }).join('');
   renderJobDetail();
-  $('#generatedAt').textContent = state.snapshot?.generatedAt || '-';
+  $('#generatedAt').textContent = formatDashboardTimestamp(state.snapshot?.generatedAt, { fallback: '-' });
 }
 
 function findJobByKey(jobKey) {
@@ -445,4 +467,4 @@ Promise.all([loadSnapshot(), loadConfigPanel()]).then(connectWebSocket).catch((e
 </script></body></html>`;
 }
 
-export { getDashboardHTML };
+export { formatDashboardTimestamp, getDashboardHTML };
