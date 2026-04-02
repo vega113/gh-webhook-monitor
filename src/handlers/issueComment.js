@@ -7,6 +7,7 @@ import { reactToComment } from "../actions/reactions.js";
 import { isOnCooldown, setCooldown } from "./utils.js";
 import { getRateLimiter } from "../rateLimiterInstance.js";
 import { addInProgressLabel, getIssueAssignees } from "../issueCoordination.js";
+import { isPRPaused } from "../prControlState.js";
 
 const defaultDeps = {
   getConfig,
@@ -20,6 +21,7 @@ const defaultDeps = {
   getRateLimiter,
   addInProgressLabel,
   getIssueAssignees,
+  isPRPaused,
 };
 
 function createHandleIssueComment(deps = defaultDeps) {
@@ -50,6 +52,10 @@ function createHandleIssueComment(deps = defaultDeps) {
     if (issue.pull_request) {
       // PR comment — only react to trigger keywords
       if (!hasTrigger) return;
+      if (deps.isPRPaused?.(repo, issue.number)) {
+        logEvent("SKIP", "paused-pr", repo, `PR #${issue.number}: paused PR comment handling`);
+        return;
+      }
 
       const rateLimiter = deps.getRateLimiter();
       const actionType = "spawnAgent";

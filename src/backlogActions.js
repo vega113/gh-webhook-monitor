@@ -11,6 +11,10 @@ function determineBacklogActions({ prs = [] }) {
   const actions = [];
 
   for (const pr of prs) {
+    if (pr.isPaused) {
+      continue;
+    }
+
     if (pr.mergeable === false) {
       actions.push({ type: "resolve_conflict", prNumber: pr.prNumber });
       continue;

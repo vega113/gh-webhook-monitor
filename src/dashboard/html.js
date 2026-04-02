@@ -36,50 +36,34 @@ function getDashboardHTML() {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9}
 a{color:#58a6ff;text-decoration:none} a:hover{text-decoration:underline}
-.topbar{background:linear-gradient(135deg,#023e6b,#0077b6,#00b4d8);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
-.topbar h1{font-size:18px;color:#fff;font-weight:600}
-.topbar .status{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-.dot.green{background:#3fb950}.dot.red{background:#f85149}.dot.amber{background:#d29922}
+.topbar{background:linear-gradient(135deg,#023e6b,#0077b6,#00b4d8);padding:12px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:30}
+.topbar h1{font-size:18px;color:#fff;font-weight:600}.topbar .status{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}.dot.green{background:#3fb950}.dot.red{background:#f85149}.dot.amber{background:#d29922}
 .badge{background:rgba(255,255,255,.15);color:#fff;padding:2px 10px;border-radius:12px;font-size:13px}
-.container{max-width:1400px;margin:0 auto;padding:20px}
+.container{max-width:1600px;margin:0 auto;padding:20px}
 .panel{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:20px;margin-bottom:16px}
 .panel h2{font-size:15px;color:#58a6ff;margin-bottom:12px}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.summary-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px}
-.summary-card .label{font-size:11px;color:#8b949e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-.summary-card .value{font-size:22px;font-weight:600}
-.repo-card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px;margin-bottom:18px}
-.repo-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}
-.repo-title{font-size:18px;font-weight:600}
-.repo-meta{display:flex;gap:8px;flex-wrap:wrap}
-.status-badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
-.badge-clean{background:#238636;color:#fff}.badge-passing{background:#238636;color:#fff}.badge-pending{background:#d29922;color:#111}.badge-failed{background:#f85149;color:#fff}.badge-approved{background:#238636;color:#fff}.badge-changes{background:#f85149;color:#fff}.badge-conflict{background:#f85149;color:#fff}.badge-draft{background:#d29922;color:#111}
-.section-title{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px}
-.item-list{display:flex;flex-direction:column;gap:10px}
-.item-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px}
-.item-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
-.item-title{font-size:14px;font-weight:600}
-.item-sub{font-size:12px;color:#8b949e;margin-top:4px}
-.item-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-.item-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px}
-.fact{background:#11161d;border:1px solid #222b36;border-radius:6px;padding:8px}
-.fact .k{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
-.fact .v{font-size:13px}
-.history-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.history-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;background:#11161d;border:1px solid #222b36;border-radius:6px;padding:8px}
-.history-item .meta{font-size:11px;color:#8b949e}
+.summary-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px}.summary-card .label{font-size:11px;color:#8b949e;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}.summary-card .value{font-size:22px;font-weight:600}
 button{background:#238636;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px}
-button:hover{background:#2ea043}
-button.secondary{background:#30363d;color:#c9d1d9}
-button.secondary:hover{background:#3b424c}
+button:hover{background:#2ea043}button.secondary{background:#30363d;color:#c9d1d9}button.secondary:hover{background:#3b424c}button.warn{background:#8957e5}button.warn:hover{background:#9e6ff0}
+button:disabled{opacity:.5;cursor:not-allowed}
 .toggle-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.empty{color:#484f58;font-style:italic;padding:14px;text-align:center}
-pre.log{background:#0d1117;padding:12px;border-radius:6px;font-size:11px;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.4}
-textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;font-family:'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical}
-#jobDetailPanel{position:sticky;bottom:0;z-index:9}
-.hint{color:#8b949e;font-size:12px}
-@media (max-width: 800px){.container{padding:12px}.topbar{padding:10px 12px}.repo-head,.item-head,.toggle-row{flex-direction:column;align-items:flex-start}}
+.hint{color:#8b949e;font-size:12px}.empty{color:#484f58;font-style:italic;padding:14px;text-align:center}
+.status-badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px}.badge-clean{background:#238636;color:#fff}.badge-passing{background:#238636;color:#fff}.badge-pending{background:#d29922;color:#111}.badge-failed{background:#f85149;color:#fff}.badge-approved{background:#238636;color:#fff}.badge-changes{background:#f85149;color:#fff}.badge-conflict{background:#f85149;color:#fff}.badge-neutral{background:#6e7681;color:#fff}.badge-paused{background:#9e6a03;color:#111}
+.repo-group{background:#161b22;border:1px solid #30363d;border-radius:10px;margin-bottom:18px;overflow:hidden}
+.repo-row{display:grid;grid-template-columns:minmax(260px,2fr) repeat(4,minmax(100px,1fr)) auto;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid #222b36}
+.repo-row button{justify-self:start}.repo-cell .label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}.repo-cell .value{font-size:13px}
+.repo-name{font-size:18px;font-weight:600}.repo-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:14px 16px;border-bottom:1px solid #222b36;background:#11161d}
+.repo-toolbar input,.repo-toolbar select,.repo-toolbar label{font-size:12px}.repo-toolbar input,.repo-toolbar select{background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:6px 8px}
+.repo-scroll{max-height:520px;overflow:auto}.repo-scroll table{width:100%;border-collapse:collapse;table-layout:fixed}.repo-scroll thead th{position:sticky;top:0;z-index:5;background:#11161d;color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px 8px;border-bottom:1px solid #222b36;text-align:left}
+.repo-scroll tbody td{padding:10px 8px;border-bottom:1px solid #1f2730;vertical-align:top;font-size:12px}.pr-table tr.pr-row:hover td{background:#11161d}.pr-title{font-size:13px;font-weight:600;display:block;margin-bottom:4px}.pr-sub{font-size:11px;color:#8b949e}
+.pr-detail-row td{background:#0f141b;padding:0}.pr-detail-panel{padding:16px;display:flex;flex-direction:column;gap:14px}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.detail-card{background:#11161d;border:1px solid #222b36;border-radius:8px;padding:10px}.detail-card .k{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}.detail-card .v{font-size:13px}
+.inline-jobs{display:flex;flex-direction:column;gap:8px}.history-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;background:#11161d;border:1px solid #222b36;border-radius:6px;padding:8px}.history-item .meta{font-size:11px;color:#8b949e}
+.inline-output{background:#0d1117;padding:12px;border-radius:6px;border:1px solid #222b36;font-size:11px;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.4}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.repo-scroll-sentinel{height:1px}.hidden{display:none}textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;font-family:'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical}
+@media (max-width: 1100px){.repo-row{grid-template-columns:1fr 1fr;}.repo-scroll{max-height:none}.repo-scroll table,.repo-scroll thead,.repo-scroll tbody,.repo-scroll tr,.repo-scroll th,.repo-scroll td{display:block;width:100%}.repo-scroll thead{display:none}.repo-scroll tbody td{padding:8px 12px}.pr-row{border-bottom:1px solid #1f2730}}
+@media (max-width: 800px){.container{padding:12px}.topbar{padding:10px 12px}.toggle-row{flex-direction:column;align-items:flex-start}}
 </style></head><body>
 <div class="topbar">
   <img src="/logo.svg" alt="GitHub Webhook Monitor" style="height:28px;width:auto;filter:brightness(0) invert(1)">
@@ -95,19 +79,13 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
     <div class="toggle-row">
       <div>
         <h2>Live Operations Board</h2>
-        <div class="hint">Actionable PRs and monitor-relevant issues grouped by repository. Updates stream over WebSocket without page refresh.</div>
+        <div class="hint">Repo-grouped PR operations table with inline controls and local state updates over WebSocket.</div>
       </div>
       <label class="hint"><input type="checkbox" id="showAllToggle"> Show non-actionable</label>
     </div>
     <div class="summary-grid" id="summaryGrid" style="margin-top:12px"></div>
   </div>
   <div id="liveBoard"></div>
-  <div id="jobDetailPanel" class="panel" style="display:none">
-    <h2>Log / Output</h2>
-    <div class="hint" id="jobDetailMeta"></div>
-    <div class="item-row" id="jobDetailActions" style="margin-top:10px;margin-bottom:10px"></div>
-    <pre class="log" id="jobDetailOut"></pre>
-  </div>
   <details id="configSection" class="panel">
     <summary style="cursor:pointer;font-weight:600;color:#58a6ff">Configuration</summary>
     <div class="toggle-row" style="margin-top:12px">
@@ -120,11 +98,17 @@ textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
-const state = { snapshot: null, selectedDetail: null, showAll: false, ws: null, reconnectTimer: null, config: null };
+const state = { snapshot: null, showAll: false, ws: null, reconnectTimer: null, config: null, repoUi: {}, inlineJobDetails: {} };
 const formatDashboardTimestamp = ${formatDashboardTimestamp.toString()};
+let repoInfiniteObserver = null;
 
-async function fetchJson(url) {
-  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+async function fetchJson(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || ('HTTP ' + res.status));
+  }
   return await res.json();
 }
 
@@ -144,14 +128,48 @@ function getRepositories() {
   return state.snapshot?.repositories || [];
 }
 
-function getVisiblePrs(repo) {
+function getRepoUi(repoName) {
+  if (!state.repoUi[repoName]) {
+    state.repoUi[repoName] = {
+      expanded: false,
+      filterText: '',
+      statusFilter: 'all',
+      visibleCount: 25,
+      expandedPrs: {},
+    };
+  }
+  return state.repoUi[repoName];
+}
+
+function getRepoPrs(repo) {
   if (!repo) return [];
   return state.showAll ? (repo.allPrs || repo.prs || []) : (repo.prs || []);
 }
 
-function getVisibleIssues(repo) {
-  if (!repo) return [];
-  return state.showAll ? (repo.allIssues || repo.issues || []) : (repo.issues || []);
+function getVisiblePrs(repo) {
+  const ui = getRepoUi(repo.repo);
+  const filtered = getRepoPrs(repo).filter((pr) => matchesRepoFilter(pr, ui));
+  return filtered.slice(0, ui.visibleCount);
+}
+
+function matchesRepoFilter(pr, ui) {
+  const text = ui.filterText.trim().toLowerCase();
+  const haystack = [pr.prNumber, pr.title, pr.branch, pr.waitingFor].join(' ').toLowerCase();
+  if (text && !haystack.includes(text)) return false;
+  switch (ui.statusFilter) {
+    case 'ci-failed': return pr.ciStatus === 'failed';
+    case 'review-pending': return pr.reviewState !== 'approved';
+    case 'paused': return pr.isPaused === true;
+    case 'active-job': return pr.hasActiveJob === true;
+    case 'auto-merge': return pr.autoMergeEnabled === true;
+    default: return true;
+  }
+}
+
+function summarizeRepo(repo) {
+  const prs = getRepoPrs(repo);
+  const paused = prs.filter((pr) => pr.isPaused).length;
+  return { paused, totalPrs: prs.length };
 }
 
 function renderSummary() {
@@ -171,46 +189,115 @@ function renderSummary() {
   el.innerHTML = cards.map(([label, value]) => '<div class="summary-card"><div class="label">'+esc(label)+'</div><div class="value">'+esc(value)+'</div></div>').join('');
 }
 
-function renderHistoryItem(job) {
-  const logBtn = '<button class="secondary" data-action="openJobDetail" data-mode="log" data-jobkey="'+esc(job.key)+'">Log</button>';
-  const outBtn = '<button class="secondary" data-action="openJobDetail" data-mode="output" data-jobkey="'+esc(job.key)+'">Output</button>';
-  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(job.code)+' · '+esc(job.duration)+' · '+esc(formatDashboardTimestamp(job.startTime, { fallback: "unknown" }))+'</div></div><div class="item-row">'+logBtn+outBtn+'</div></div>';
+function renderStatusBadges(pr) {
+  return [
+    '<span class="status-badge '+(pr.mergeable===false?'badge-conflict':pr.mergeable===true?'badge-clean':'badge-pending')+'">'+esc(pr.mergeable===false?'CONFLICT':pr.mergeable===true?'CLEAN':'UNKNOWN')+'</span>',
+    '<span class="status-badge '+(pr.ciStatus==='passing'?'badge-passing':pr.ciStatus==='failed'?'badge-failed':pr.ciStatus==='neutral'?'badge-neutral':'badge-pending')+'">CI '+esc((pr.ciStatus||'unknown').toUpperCase())+'</span>',
+    '<span class="status-badge '+(pr.reviewState==='approved'?'badge-approved':pr.reviewState==='changes_requested'?'badge-changes':'badge-pending')+'">'+esc((pr.reviewState||'pending').toUpperCase())+'</span>',
+    (pr.isPaused ? '<span class="status-badge badge-paused">PAUSED</span>' : ''),
+    (pr.autoMergeEnabled ? '<span class="status-badge badge-clean">AUTO-MERGE</span>' : ''),
+  ].filter(Boolean).join(' ');
 }
 
-function renderPrCard(pr) {
-  const badges = [
-    '<span class="status-badge '+(pr.mergeable===false?'badge-conflict':pr.mergeable===true?'badge-clean':'badge-pending')+'">'+esc(pr.mergeable===false?'CONFLICT':pr.mergeable===true?'CLEAN':'UNKNOWN')+'</span>',
-    '<span class="status-badge '+(pr.ciStatus==='passing'?'badge-passing':pr.ciStatus==='failed'?'badge-failed':'badge-pending')+'">CI '+esc((pr.ciStatus||'unknown').toUpperCase())+'</span>',
-    '<span class="status-badge '+(pr.reviewState==='approved'?'badge-approved':pr.reviewState==='changes_requested'?'badge-changes':'badge-pending')+'">'+esc((pr.reviewState||'pending').toUpperCase())+'</span>'
-  ];
-  const jobs = (pr.jobs || []).length ? '<div class="history-list">'+pr.jobs.map(renderHistoryItem).join('')+'</div>' : '<div class="empty">No jobs yet</div>';
-  const blockers = (pr.blockers||[]).map((b) => '<div class="fact"><div class="k">Blocker</div><div class="v">'+esc(b.message)+'</div></div>').join('');
-  return '<div class="item-card">'
-    + '<div class="item-head"><div><div class="item-title"><a href="https://github.com/'+esc(pr.repo)+'/pull/'+esc(pr.prNumber)+'" target="_blank">#'+esc(pr.prNumber)+' '+esc(pr.title)+'</a></div><div class="item-sub">base '+esc(pr.branch||'unknown')+'</div></div><div class="item-row">'+badges.join('')+'</div></div>'
-    + '<div class="item-grid">'
-    + '<div class="fact"><div class="k">PR Age</div><div class="v">'+esc(fmtMinutes(pr.prAgeMinutes))+'</div></div>'
-    + '<div class="fact"><div class="k">Iterations</div><div class="v">'+esc(pr.iterationCount || 0)+'</div></div>'
-    + '<div class="fact"><div class="k">Waiting For</div><div class="v">'+esc(pr.waitingFor || 'Unknown')+'</div></div>'
-    + '<div class="fact"><div class="k">Last Updated</div><div class="v">'+esc(formatDashboardTimestamp(pr.lastUpdated, { fallback: 'unknown' }))+'</div></div>'
+function renderInlineJobItem(pr, job) {
+  const logBtn = '<button class="secondary" data-action="showInlineJobDetail" data-mode="log" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Log</button>';
+  const outBtn = '<button class="secondary" data-action="showInlineJobDetail" data-mode="output" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Output</button>';
+  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(job.code)+' · '+esc(job.duration || pr.activeJobElapsed || '?')+' · '+esc(formatDashboardTimestamp(job.startTime, { fallback: 'unknown' }))+'</div></div><div class="action-row">'+logBtn+outBtn+'</div></div>';
+}
+
+function renderPrDetailPanel(pr, repoName) {
+  const ui = getRepoUi(repoName);
+  const detailKey = repoName + '#' + pr.prNumber;
+  const inline = state.inlineJobDetails[detailKey];
+  const blockers = (pr.blockers || []).length
+    ? (pr.blockers || []).map((b) => '<div class="detail-card"><div class="k">Blocker</div><div class="v">'+esc(b.message)+'</div></div>').join('')
+    : '<div class="detail-card"><div class="k">Blockers</div><div class="v">No blockers</div></div>';
+  const jobs = (pr.jobs || []).length
+    ? '<div class="inline-jobs">'+pr.jobs.map((job) => renderInlineJobItem(pr, job)).join('')+'</div>'
+    : '<div class="empty">No jobs yet</div>';
+  const inlineOutput = inline
+    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc(inline.content || 'Loading…')+'</pre></div>'
+    : '';
+
+  return '<div class="pr-detail-panel">'
+    + '<div class="detail-grid">'
+    + '<div class="detail-card"><div class="k">Waiting For</div><div class="v">'+esc(pr.waitingFor || 'Unknown')+'</div></div>'
+    + '<div class="detail-card"><div class="k">Last Updated</div><div class="v">'+esc(formatDashboardTimestamp(pr.lastUpdated, { fallback: 'unknown' }))+'</div></div>'
+    + '<div class="detail-card"><div class="k">Active Agent</div><div class="v">'+esc(pr.hasActiveJob ? ('Running · ' + (pr.activeJobElapsed || '?')) : ('Idle · last ' + (pr.lastJobDuration || 'none')))+'</div></div>'
+    + '<div class="detail-card"><div class="k">Next Poll</div><div class="v">'+esc((pr.nextPollInSeconds || 0) + 's')+'</div></div>'
     + blockers
     + '</div>'
-    + '<div class="section-title">Recent Jobs / Actions</div>'
-    + jobs
+    + '<div class="action-row">'
+    + (pr.isPaused
+      ? '<button class="warn" data-action="resumePr" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Resume</button>'
+      : '<button class="warn" data-action="pausePr" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Pause</button>')
+    + '<button class="secondary" data-action="toggleAutoMerge" data-enabled="'+esc(pr.autoMergeEnabled ? 'false' : 'true')+'" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">'+esc(pr.autoMergeEnabled ? 'Disable auto-merge' : 'Enable auto-merge')+'</button>'
+    + '<a class="secondary" style="display:inline-flex;align-items:center" href="https://github.com/'+esc(pr.repo)+'/pull/'+esc(pr.prNumber)+'" target="_blank">Open on GitHub</a>'
+    + '</div>'
+    + '<div><div class="hint" style="margin-bottom:8px">Recent jobs / actions</div>'+jobs+'</div>'
+    + inlineOutput
     + '</div>';
 }
 
-function renderIssueCard(issue) {
-  const labels = (issue.labels||[]).map((label) => '<span class="status-badge badge-pending">'+esc(label)+'</span>').join('');
-  const jobs = (issue.jobs || []).length ? '<div class="history-list">'+issue.jobs.map(renderHistoryItem).join('')+'</div>' : '<div class="empty">No jobs yet</div>';
-  return '<div class="item-card">'
-    + '<div class="item-head"><div><div class="item-title"><a href="https://github.com/'+esc(issue.repo)+'/issues/'+esc(issue.number)+'" target="_blank">#'+esc(issue.number)+' '+esc(issue.title)+'</a></div><div class="item-sub">'+esc(issue.state||'open')+'</div></div><div class="item-row">'+labels+'</div></div>'
-    + '<div class="item-grid">'
-    + '<div class="fact"><div class="k">Issue Age</div><div class="v">'+esc(fmtMinutes(issue.issueAgeMinutes))+'</div></div>'
-    + '<div class="fact"><div class="k">Iterations</div><div class="v">'+esc(issue.iterationCount || 0)+'</div></div>'
+function renderPrRow(pr, repoName) {
+  const ui = getRepoUi(repoName);
+  const expanded = Boolean(ui.expandedPrs[pr.prNumber]);
+  const titleCell = '<div><button class="secondary" data-action="togglePrExpanded" data-repo="'+esc(repoName)+'" data-pr="'+esc(pr.prNumber)+'">'+esc(expanded ? 'Hide' : 'Show')+'</button></div><a class="pr-title" href="https://github.com/'+esc(pr.repo)+'/pull/'+esc(pr.prNumber)+'" target="_blank">#'+esc(pr.prNumber)+' '+esc(pr.title)+'</a><div class="pr-sub">base '+esc(pr.branch||'unknown')+' · jobs '+esc(pr.jobCount || 0)+'</div>';
+  const elapsedCell = pr.hasActiveJob ? ('Running · ' + esc(pr.activeJobElapsed || '?')) : esc(pr.lastJobDuration || 'none');
+  return '<tr class="pr-row">'
+    + '<td>'+titleCell+'</td>'
+    + '<td>'+renderStatusBadges(pr)+'</td>'
+    + '<td>'+esc(pr.waitingFor || 'Unknown')+'</td>'
+    + '<td>'+esc(elapsedCell)+'</td>'
+    + '<td>'+esc((pr.nextPollInSeconds || 0) + 's')+'</td>'
+    + '<td>'+(pr.isPaused ? 'Paused' : 'Active')+'</td>'
+    + '<td>'+(pr.autoMergeEnabled ? 'Enabled' : 'Off')+'</td>'
+    + '</tr>'
+    + (expanded ? '<tr class="pr-detail-row"><td colspan="7">'+renderPrDetailPanel(pr, repoName)+'</td></tr>' : '');
+}
+
+function renderRepoGroup(repo) {
+  const ui = getRepoUi(repo.repo);
+  const summary = summarizeRepo(repo);
+  const filtered = getRepoPrs(repo).filter((pr) => matchesRepoFilter(pr, ui));
+  const visiblePrs = filtered.slice(0, ui.visibleCount);
+  const sentinel = filtered.length > visiblePrs.length ? '<div class="repo-scroll-sentinel" data-role="repoScrollSentinel" data-repo="'+esc(repo.repo)+'"></div>' : '';
+
+  return '<section class="repo-group repo-group" data-repo-group="'+esc(repo.repo)+'">'
+    + '<div class="repo-row">'
+    + '<div class="repo-cell"><div class="repo-name">'+esc(repo.repo)+'</div><div class="hint">'+esc(repo.summary.actionablePrs)+' actionable PRs · '+esc(repo.summary.actionableIssues)+' actionable issues</div></div>'
+    + '<div class="repo-cell"><div class="label">PRs</div><div class="value">'+esc(summary.totalPrs)+'</div></div>'
+    + '<div class="repo-cell"><div class="label">Active Jobs</div><div class="value">'+esc(repo.summary.activeJobs || 0)+'</div></div>'
+    + '<div class="repo-cell"><div class="label">Paused</div><div class="value">'+esc(summary.paused)+'</div></div>'
+    + '<div class="repo-cell"><div class="label">Hidden</div><div class="value">'+esc((repo.summary.hiddenPrs || 0) + (repo.summary.hiddenIssues || 0))+'</div></div>'
+    + '<div><button data-action="toggleRepoExpanded" data-repo="'+esc(repo.repo)+'">'+esc(ui.expanded ? 'Collapse' : 'Expand')+'</button></div>'
     + '</div>'
-    + '<div class="section-title">Recent Jobs / Actions</div>'
-    + jobs
-    + '</div>';
+    + (ui.expanded
+      ? '<div>'
+        + '<div class="repo-toolbar">'
+        + '<input class="repoFilter" data-role="repoFilter" data-repo="'+esc(repo.repo)+'" placeholder="Filter PRs" value="'+esc(ui.filterText)+'">'
+        + '<select data-role="repoStatusFilter" data-repo="'+esc(repo.repo)+'">'
+        + '<option value="all"'+(ui.statusFilter === 'all' ? ' selected' : '')+'>All</option>'
+        + '<option value="ci-failed"'+(ui.statusFilter === 'ci-failed' ? ' selected' : '')+'>CI failed</option>'
+        + '<option value="review-pending"'+(ui.statusFilter === 'review-pending' ? ' selected' : '')+'>Review pending</option>'
+        + '<option value="paused"'+(ui.statusFilter === 'paused' ? ' selected' : '')+'>Paused</option>'
+        + '<option value="active-job"'+(ui.statusFilter === 'active-job' ? ' selected' : '')+'>Active job</option>'
+        + '<option value="auto-merge"'+(ui.statusFilter === 'auto-merge' ? ' selected' : '')+'>Auto-merge</option>'
+        + '</select>'
+        + '<span class="hint">Showing '+esc(visiblePrs.length)+' of '+esc(filtered.length)+' PRs</span>'
+        + '</div>'
+        + '<div class="repo-scroll" data-repo-scroll="'+esc(repo.repo)+'">'
+        + '<table class="pr-table">'
+        + '<thead><tr><th>PR</th><th>Status</th><th>Waiting For</th><th>Agent</th><th>Next Poll</th><th>Paused</th><th>Auto-merge</th></tr></thead>'
+        + '<tbody>'
+        + (visiblePrs.length ? visiblePrs.map((pr) => renderPrRow(pr, repo.repo)).join('') : '<tr><td colspan="7" class="empty">No matching PRs</td></tr>')
+        + '</tbody>'
+        + '</table>'
+        + sentinel
+        + '</div>'
+        + '</div>'
+      : '')
+    + '</section>';
 }
 
 function renderBoard() {
@@ -222,69 +309,56 @@ function renderBoard() {
     board.innerHTML = '<div class="panel"><div class="empty">No monitored repositories</div></div>';
     return;
   }
-  board.innerHTML = repos.map((repo) => {
-    const prs = getVisiblePrs(repo);
-    const issues = getVisibleIssues(repo);
-    return '<div class="repo-card">'
-      + '<div class="repo-head"><div><div class="repo-title">'+esc(repo.repo)+'</div><div class="hint">'+esc(repo.summary.actionablePrs)+' actionable PRs · '+esc(repo.summary.actionableIssues)+' actionable issues · '+esc(repo.summary.activeJobs)+' active jobs</div></div>'
-      + '<div class="repo-meta">'
-      + (repo.summary.hiddenPrs ? '<span class="status-badge badge-pending">'+esc(repo.summary.hiddenPrs)+' hidden PRs</span>' : '')
-      + (repo.summary.hiddenIssues ? '<span class="status-badge badge-pending">'+esc(repo.summary.hiddenIssues)+' hidden issues</span>' : '')
-      + '</div></div>'
-      + '<div class="section-title">Pull Requests</div>'
-      + (prs.length ? '<div class="item-list">'+prs.map(renderPrCard).join('')+'</div>' : '<div class="empty">No '+(state.showAll ? '' : 'actionable ')+'PRs</div>')
-      + '<div class="section-title">Issues</div>'
-      + (issues.length ? '<div class="item-list">'+issues.map(renderIssueCard).join('')+'</div>' : '<div class="empty">No '+(state.showAll ? '' : 'actionable ')+'issues</div>')
-      + '</div>';
-  }).join('');
-  renderJobDetail();
+  board.innerHTML = repos.map((repo) => renderRepoGroup(repo)).join('');
+  attachRepoInfiniteScrollObservers();
   $('#generatedAt').textContent = formatDashboardTimestamp(state.snapshot?.generatedAt, { fallback: '-' });
 }
 
-function findJobByKey(jobKey) {
-  for (const repo of getRepositories()) {
-    for (const pr of (repo.allPrs || [])) {
-      const job = (pr.jobs || []).find((j) => j.key === jobKey);
-      if (job) return job;
-    }
-    for (const issue of (repo.allIssues || [])) {
-      const job = (issue.jobs || []).find((j) => j.key === jobKey);
-      if (job) return job;
-    }
-  }
-  return null;
+function findPr(repoName, prNumber) {
+  const repo = getRepositories().find((entry) => entry.repo === repoName);
+  if (!repo) return null;
+  return (repo.allPrs || repo.prs || []).find((pr) => String(pr.prNumber) === String(prNumber)) || null;
 }
 
-async function renderJobDetail() {
-  const panel = $('#jobDetailPanel');
-  const meta = $('#jobDetailMeta');
-  const out = $('#jobDetailOut');
-  const actions = $('#jobDetailActions');
-  if (!panel || !meta || !out || !actions) return;
-  if (!state.selectedDetail?.jobKey) {
-    panel.style.display = 'none';
-    return;
-  }
-  const job = findJobByKey(state.selectedDetail.jobKey);
-  if (!job) {
-    panel.style.display = 'none';
-    return;
-  }
-  panel.style.display = 'block';
-  const isLog = state.selectedDetail.mode === 'log';
-  meta.textContent = isLog ? ('Absolute log path: ' + (job.logFile || '(missing)')) : ('Captured output for: ' + job.key);
-  actions.innerHTML = '<button class="secondary" data-action="closeDetail">Close</button>';
-  if (isLog) {
+async function loadInlineJobDetail(repoName, prNumber, jobKey, mode) {
+  const detailKey = repoName + '#' + prNumber;
+  const pr = findPr(repoName, prNumber);
+  const job = (pr?.jobs || []).find((entry) => entry.key === jobKey);
+  if (!job) return;
+  state.inlineJobDetails[detailKey] = {
+    jobKey,
+    mode,
+    filename: (job.logFile || '').split('/').pop(),
+    content: mode === 'output' ? (job.outputTail || '(no output recorded)') : 'Loading…',
+  };
+  renderBoard();
+  if (mode === 'log') {
     try {
       const filename = (job.logFile || '').split('/').pop();
-      const r = await fetch('/api/logs/' + encodeURIComponent(filename));
-      out.textContent = await r.text();
-    } catch (e) {
-      out.textContent = 'Error loading log: ' + e.message;
+      const response = await fetch('/api/logs/' + encodeURIComponent(filename));
+      state.inlineJobDetails[detailKey].content = await response.text();
+      renderBoard();
+    } catch (error) {
+      state.inlineJobDetails[detailKey].content = 'Error loading log: ' + error.message;
+      renderBoard();
     }
-  } else {
-    out.textContent = job.outputTail || '(no output recorded)';
   }
+}
+
+function attachRepoInfiniteScrollObservers() {
+  if (!('IntersectionObserver' in window)) return;
+  if (!repoInfiniteObserver) {
+    repoInfiniteObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const repoName = entry.target.getAttribute('data-repo');
+        const ui = getRepoUi(repoName);
+        ui.visibleCount += 25;
+        renderBoard();
+      });
+    }, { threshold: 1 });
+  }
+  document.querySelectorAll('[data-role="repoScrollSentinel"]').forEach((el) => repoInfiniteObserver.observe(el));
 }
 
 async function loadSnapshot() {
@@ -305,41 +379,37 @@ function renderConfigPanel() {
     return;
   }
   const repos = Object.entries(cfg.repos || {}).map(([name, repo]) =>
-    '<tr><td class="item-sub">'+esc(name)+'</td><td class="item-sub">'+esc(repo.localPath)+'</td><td><input type="checkbox" data-role="repo-enabled" data-repo="'+esc(name)+'"'+checked(repo.enabled)+'</td><td><button class="secondary" data-action="removeRepoBtn" data-repo="'+esc(name)+'">Remove</button></td></tr>'
+    '<tr><td class="hint">'+esc(name)+'</td><td class="hint">'+esc(repo.localPath)+'</td><td><input type="checkbox" data-role="repo-enabled" data-repo="'+esc(name)+'"'+checked(repo.enabled)+'</td><td><button class="secondary" data-action="removeRepoBtn" data-repo="'+esc(name)+'">Remove</button></td></tr>'
   ).join('');
   const promptRows = Object.entries(cfg.promptTemplates || {}).map(([key, value]) =>
-    '<div class="fact" style="grid-column:1/-1"><div class="k">'+esc(key)+'</div><textarea class="json-editor" style="min-height:120px" data-role="prompt" data-key="'+esc(key)+'">'+esc(value)+'</textarea></div>'
+    '<div class="detail-card" style="grid-column:1/-1"><div class="k">'+esc(key)+'</div><textarea class="json-editor" style="min-height:120px" data-role="prompt" data-key="'+esc(key)+'">'+esc(value)+'</textarea></div>'
   ).join('');
   const repoOverrideRows = Object.keys(cfg.repos || {}).map((name) => {
     const current = cfg.agentConfig?.perRepoOverride?.[name] || '';
-    return '<tr><td class="item-sub">'+esc(name)+'</td><td><select data-role="repo-agent" data-repo="'+esc(name)+'"><option value=""'+selected(current, '')+'>Default</option><option value="claude"'+selected(current, 'claude')+'>Claude</option><option value="codex"'+selected(current, 'codex')+'>Codex</option></select></td></tr>';
+    return '<tr><td class="hint">'+esc(name)+'</td><td><select data-role="repo-agent" data-repo="'+esc(name)+'"><option value=""'+selected(current, '')+'>Default</option><option value="claude"'+selected(current, 'claude')+'>Claude</option><option value="codex"'+selected(current, 'codex')+'>Codex</option></select></td></tr>';
   }).join('');
 
   root.innerHTML =
-    '<div class="section-title">Repositories</div>'
-    + '<div class="item-card"><table style="width:100%"><tr><th>Name</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+repos+'</table>'
-    + '<div class="item-row" style="margin-top:12px"><input id="newRepoName" placeholder="owner/repo"><input id="newRepoPath" placeholder="/path/to/checkout" style="min-width:320px"><button data-action="addRepoBtn">Add repository</button><button data-action="saveRepos">Save repository states</button></div></div>'
-    + '<div class="section-title">Agents</div>'
-    + '<div class="item-card"><div class="item-grid">'
-    + '<div class="fact"><div class="k">Default Agent</div><div class="v"><select id="defaultAgentSelect"><option value="claude"'+selected(cfg.agentConfig?.defaultAgent,'claude')+'>Claude</option><option value="codex"'+selected(cfg.agentConfig?.defaultAgent,'codex')+'>Codex</option></select></div></div>'
-    + '<div class="fact"><div class="k">Codex Model</div><div class="v"><input id="codexModelInput" value="'+esc(cfg.agent?.codex?.model || '')+'"></div></div>'
-    + '<div class="fact"><div class="k">Codex Sandbox</div><div class="v"><select id="codexSandboxSelect"><option value="read-only"'+selected(cfg.agent?.codex?.sandbox,'read-only')+'>read-only</option><option value="workspace-write"'+selected(cfg.agent?.codex?.sandbox,'workspace-write')+'>workspace-write</option><option value="danger-full-access"'+selected(cfg.agent?.codex?.sandbox,'danger-full-access')+'>danger-full-access</option></select></div></div>'
-    + '<div class="fact"><div class="k">Codex Extra Args</div><div class="v"><input id="codexExtraArgsInput" value="'+esc(cfg.agent?.codex?.extraArgs || '')+'"></div></div>'
-    + '<div class="fact"><div class="k">Claude Model</div><div class="v"><input id="claudeModelInput" value="'+esc(cfg.agent?.claude?.model || '')+'"></div></div>'
-    + '</div><div class="section-title">Per-repository overrides</div><table style="width:100%"><tr><th>Repository</th><th>Agent</th></tr>'+repoOverrideRows+'</table><div class="item-row" style="margin-top:12px"><button data-action="saveDefaultAgent">Save default agent</button><button data-action="saveAgentSettings">Save agent settings</button><button data-action="saveRepoAgents">Save repo overrides</button></div></div>'
-    + '<div class="section-title">Prompts</div>'
-    + '<div class="item-card"><div class="item-grid">'+promptRows+'</div><div class="item-row" style="margin-top:12px"><button data-action="savePrompts">Save prompts</button></div></div>'
-    + '<div class="section-title">Settings</div>'
-    + '<div class="item-card"><div class="item-grid">'
-    + '<div class="fact"><div class="k">Max concurrent jobs</div><div class="v"><input id="maxJobsInput" type="number" min="1" value="'+esc(cfg.settings?.maxConcurrentJobs ?? 1)+'"></div></div>'
-    + '<div class="fact"><div class="k">Job timeout minutes</div><div class="v"><input id="timeoutInput" type="number" min="1" value="'+esc(cfg.settings?.jobTimeoutMinutes ?? 15)+'"></div></div>'
-    + '<div class="fact"><div class="k">Bot username</div><div class="v"><input id="botUsernameInput" value="'+esc(cfg.settings?.botUsername || '')+'"></div></div>'
-    + '<div class="fact"><div class="k">In-progress label</div><div class="v"><input id="inProgressLabelInput" value="'+esc(cfg.settings?.inProgressLabel || '')+'"></div></div>'
-    + '<div class="fact"><div class="k">Resolved label</div><div class="v"><input id="resolvedLabelInput" value="'+esc(cfg.settings?.agentResolvedLabel || '')+'"></div></div>'
-    + '<div class="fact"><div class="k">Trigger keywords</div><div class="v"><input id="triggerKeywordsInput" value="'+esc((cfg.settings?.triggerKeywords || []).join(', '))+'"></div></div>'
-    + '<div class="fact"><div class="k">Issue labels</div><div class="v"><input id="issueLabelsInput" value="'+esc((cfg.settings?.issueLabels || []).join(', '))+'"></div></div>'
-    + '<div class="fact"><div class="k">Ignored bots</div><div class="v"><input id="ignoredBotsInput" value="'+esc((cfg.settings?.ignoredBots || []).join(', '))+'"></div></div>'
-    + '</div><div class="item-row" style="margin-top:12px"><button data-action="saveSettingsPanel">Save settings</button></div></div>';
+    '<div class="detail-card"><table style="width:100%"><tr><th>Name</th><th>Local Path</th><th>Enabled</th><th></th></tr>'+repos+'</table>'
+    + '<div class="action-row" style="margin-top:12px"><input id="newRepoName" placeholder="owner/repo"><input id="newRepoPath" placeholder="/path/to/checkout" style="min-width:320px"><button data-action="addRepoBtn">Add repository</button><button data-action="saveRepos">Save repository states</button></div></div>'
+    + '<div class="detail-card" style="margin-top:14px"><div class="detail-grid">'
+    + '<div class="detail-card"><div class="k">Default Agent</div><div class="v"><select id="defaultAgentSelect"><option value="claude"'+selected(cfg.agentConfig?.defaultAgent,'claude')+'>Claude</option><option value="codex"'+selected(cfg.agentConfig?.defaultAgent,'codex')+'>Codex</option></select></div></div>'
+    + '<div class="detail-card"><div class="k">Codex Model</div><div class="v"><input id="codexModelInput" value="'+esc(cfg.agent?.codex?.model || '')+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Codex Sandbox</div><div class="v"><select id="codexSandboxSelect"><option value="read-only"'+selected(cfg.agent?.codex?.sandbox,'read-only')+'>read-only</option><option value="workspace-write"'+selected(cfg.agent?.codex?.sandbox,'workspace-write')+'>workspace-write</option><option value="danger-full-access"'+selected(cfg.agent?.codex?.sandbox,'danger-full-access')+'>danger-full-access</option></select></div></div>'
+    + '<div class="detail-card"><div class="k">Codex Extra Args</div><div class="v"><input id="codexExtraArgsInput" value="'+esc(cfg.agent?.codex?.extraArgs || '')+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Claude Model</div><div class="v"><input id="claudeModelInput" value="'+esc(cfg.agent?.claude?.model || '')+'"></div></div>'
+    + '</div><div class="hint" style="margin:12px 0 8px">Per-repository overrides</div><table style="width:100%"><tr><th>Repository</th><th>Agent</th></tr>'+repoOverrideRows+'</table><div class="action-row" style="margin-top:12px"><button data-action="saveDefaultAgent">Save default agent</button><button data-action="saveAgentSettings">Save agent settings</button><button data-action="saveRepoAgents">Save repo overrides</button></div></div>'
+    + '<div class="detail-card" style="margin-top:14px"><div class="detail-grid">'+promptRows+'</div><div class="action-row" style="margin-top:12px"><button data-action="savePrompts">Save prompts</button></div></div>'
+    + '<div class="detail-card" style="margin-top:14px"><div class="detail-grid">'
+    + '<div class="detail-card"><div class="k">Max concurrent jobs</div><div class="v"><input id="maxJobsInput" type="number" min="1" value="'+esc(cfg.settings?.maxConcurrentJobs ?? 1)+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Job timeout minutes</div><div class="v"><input id="timeoutInput" type="number" min="1" value="'+esc(cfg.settings?.jobTimeoutMinutes ?? 15)+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Bot username</div><div class="v"><input id="botUsernameInput" value="'+esc(cfg.settings?.botUsername || '')+'"></div></div>'
+    + '<div class="detail-card"><div class="k">In-progress label</div><div class="v"><input id="inProgressLabelInput" value="'+esc(cfg.settings?.inProgressLabel || '')+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Resolved label</div><div class="v"><input id="resolvedLabelInput" value="'+esc(cfg.settings?.agentResolvedLabel || '')+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Trigger keywords</div><div class="v"><input id="triggerKeywordsInput" value="'+esc((cfg.settings?.triggerKeywords || []).join(', '))+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Issue labels</div><div class="v"><input id="issueLabelsInput" value="'+esc((cfg.settings?.issueLabels || []).join(', '))+'"></div></div>'
+    + '<div class="detail-card"><div class="k">Ignored bots</div><div class="v"><input id="ignoredBotsInput" value="'+esc((cfg.settings?.ignoredBots || []).join(', '))+'"></div></div>'
+    + '</div><div class="action-row" style="margin-top:12px"><button data-action="saveSettingsPanel">Save settings</button></div></div>';
 }
 
 async function loadConfigPanel() {
@@ -379,9 +449,25 @@ function connectWebSocket() {
   state.ws.onerror = () => setConnection('error');
 }
 
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
   if (e.target && e.target.id === 'showAllToggle') {
     state.showAll = e.target.checked;
+    renderBoard();
+    return;
+  }
+  if (e.target.matches('[data-role="repoFilter"]')) {
+    const repoName = e.target.getAttribute('data-repo');
+    const ui = getRepoUi(repoName);
+    ui.filterText = e.target.value || '';
+    ui.visibleCount = 25;
+    renderBoard();
+    return;
+  }
+  if (e.target.matches('[data-role="repoStatusFilter"]')) {
+    const repoName = e.target.getAttribute('data-repo');
+    const ui = getRepoUi(repoName);
+    ui.statusFilter = e.target.value || 'all';
+    ui.visibleCount = 25;
     renderBoard();
   }
 });
@@ -390,13 +476,39 @@ document.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const action = btn.getAttribute('data-action');
-  if (action === 'openJobDetail') {
-    state.selectedDetail = { jobKey: btn.getAttribute('data-jobkey'), mode: btn.getAttribute('data-mode') };
-    await renderJobDetail();
-    $('#jobDetailPanel')?.scrollIntoView({ behavior: 'auto', block: 'start' });
-  } else if (action === 'closeDetail') {
-    state.selectedDetail = null;
-    renderJobDetail();
+  if (action === 'toggleRepoExpanded') {
+    const repoName = btn.getAttribute('data-repo');
+    const ui = getRepoUi(repoName);
+    ui.expanded = !ui.expanded;
+    ui.visibleCount = Math.max(ui.visibleCount, 25);
+    renderBoard();
+  } else if (action === 'togglePrExpanded') {
+    const repoName = btn.getAttribute('data-repo');
+    const prNumber = btn.getAttribute('data-pr');
+    const ui = getRepoUi(repoName);
+    ui.expandedPrs[prNumber] = !ui.expandedPrs[prNumber];
+    renderBoard();
+  } else if (action === 'showInlineJobDetail') {
+    await loadInlineJobDetail(btn.getAttribute('data-repo'), btn.getAttribute('data-pr'), btn.getAttribute('data-jobkey'), btn.getAttribute('data-mode'));
+  } else if (action === 'pausePr') {
+    const repo = btn.getAttribute('data-repo');
+    const [owner, repoName] = repo.split('/');
+    const pr = btn.getAttribute('data-pr');
+    await fetchJson('/api/pr/'+owner+'/'+repoName+'/'+pr+'/pause', { method: 'POST' });
+    await loadSnapshot();
+  } else if (action === 'resumePr') {
+    const repo = btn.getAttribute('data-repo');
+    const [owner, repoName] = repo.split('/');
+    const pr = btn.getAttribute('data-pr');
+    await fetchJson('/api/pr/'+owner+'/'+repoName+'/'+pr+'/resume', { method: 'POST' });
+    await loadSnapshot();
+  } else if (action === 'toggleAutoMerge') {
+    const repo = btn.getAttribute('data-repo');
+    const [owner, repoName] = repo.split('/');
+    const pr = btn.getAttribute('data-pr');
+    const enabled = btn.getAttribute('data-enabled') === 'true';
+    await fetchJson('/api/pr/'+owner+'/'+repoName+'/'+pr+'/auto-merge', { method: 'POST', body: JSON.stringify({ enabled }) });
+    await loadSnapshot();
   } else if (action === 'reloadConfigPanel') {
     await loadConfigPanel();
   } else if (action === 'addRepoBtn') {

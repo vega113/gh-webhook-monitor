@@ -3,6 +3,7 @@ import { getEventLog } from "../logger.js";
 import { getJobHistory, getActiveJobs } from "../actions/spawnAgent.js";
 import { getPRStateCache } from "../dispatcherInstance.js";
 import { buildDashboardSnapshot } from "./snapshot.js";
+import { getPRControlStore } from "../prControlState.js";
 
 const ISSUE_CACHE = new Map();
 const ISSUE_TTL_MS = 30 * 1000;
@@ -76,6 +77,8 @@ async function collectDashboardSnapshot(config, statusCache) {
       statuses,
       issues,
       jobs,
+      prControls: getPRControlStore().listAll(),
+      settings: config.settings || {},
     }),
     generatedAt: new Date(now).toISOString(),
     recentEvents: getEventLog().slice(0, 50),

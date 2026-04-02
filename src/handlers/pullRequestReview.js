@@ -4,6 +4,7 @@ import { renderPrompt } from "../prompts.js";
 import { spawnAgent } from "../actions/spawnAgent.js";
 import { hasLabel, AGENT_PR_LABEL } from "./utils.js";
 import { getRateLimiter } from "../rateLimiterInstance.js";
+import { skipIfPRPaused } from "../prActionGuards.js";
 
 async function handlePullRequestReview(payload) {
   const config = getConfig();
@@ -15,6 +16,7 @@ async function handlePullRequestReview(payload) {
   const repoPath = getRepoPath(repo);
 
   if (!repoPath) return;
+  if (skipIfPRPaused(repo, pr.number, "paused PR review handling")) return;
   if (review.state !== "changes_requested" && review.state !== "commented")
     return;
   if (config.settings.ignoredBots.some((b) => review.user.login.includes(b)))

@@ -26,6 +26,7 @@ import { buildWebhookCacheUpdate } from "./src/webhookCacheUpdate.js";
 import { createLiveHub } from "./src/dashboard/liveHub.js";
 import { collectDashboardSnapshot } from "./src/dashboard/data.js";
 import { determineBacklogActions } from "./src/backlogActions.js";
+import { skipIfPRPaused } from "./src/prActionGuards.js";
 
 const PORT = parseInt(process.env.PORT || "3847", 10);
 
@@ -98,6 +99,9 @@ app.post("/webhook", async (req, res) => {
     if (action === ActionType.RESOLVE_THREADS) {
       const prNumber = payload.pull_request?.number;
       if (prNumber) {
+        if (skipIfPRPaused(repo, prNumber, "paused thread resolution")) {
+          continue;
+        }
         const autoResolveBots = config.settings.autoResolveBots || [];
         logEvent(
           "RESOLVE_THREADS",
@@ -125,6 +129,9 @@ app.post("/webhook", async (req, res) => {
     if (action === ActionType.RESOLVE_CONFLICT) {
       const prNumber = payload.pull_request?.number ?? payload.pull_request?.prNumber;
       if (prNumber) {
+        if (skipIfPRPaused(repo, prNumber, "paused conflict resolution")) {
+          continue;
+        }
         logEvent(
           "RESOLVE_CONFLICT",
           "action-triggered",

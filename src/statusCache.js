@@ -87,6 +87,7 @@ class StatusCache {
       lastUpdated: this.prStateCache.getLastObservedTime(repo, prNumber),
       openedAt: prState.openedAt || null,
       isDraft: prState.isDraft || false,
+      autoMergeEnabled: Boolean(prState.autoMergeRequest),
     };
 
     return status;
