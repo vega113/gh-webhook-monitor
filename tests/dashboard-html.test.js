@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { getDashboardHTML } from "../src/dashboard/html.js";
+import { formatDashboardTimestamp, getDashboardHTML } from "../src/dashboard/html.js";
 
 test("dashboard exposes a persistent in-page job detail panel", () => {
   const html = getDashboardHTML();
@@ -44,4 +44,15 @@ test("dashboard is a single-page live view driven by WebSockets", () => {
   assert.equal(html.includes('id="configEditor"'), false, "raw json config editor should be removed");
   assert.ok(html.includes('new WebSocket('), "missing WebSocket bootstrap");
   assert.ok(html.includes('/api/dashboard'), "missing snapshot fallback endpoint");
+});
+
+test("dashboard formats timestamps in local time instead of raw UTC strings", () => {
+  const formatted = formatDashboardTimestamp("2026-04-02T10:50:41.205Z", {
+    locale: "en-GB",
+    timeZone: "Asia/Jerusalem",
+  });
+
+  assert.match(formatted, /02\/04\/2026|2\/4\/2026/, "expected local calendar date");
+  assert.match(formatted, /13:50|1:50:41 pm|1:50 pm/i, "expected UTC timestamp converted into local time");
+  assert.equal(formatted.includes("10:50:41.205Z"), false, "should not expose the raw UTC timestamp");
 });
