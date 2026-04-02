@@ -10,14 +10,20 @@ import { setupStatusRoutes } from "./statusApi.js";
 import { getIssueAssignees } from "../issueCoordination.js";
 import { getPostMergeGateStatus } from "../postMergeGateState.js";
 import { collectDashboardSnapshot } from "../dashboard/data.js";
+import { getPRControlStore } from "../prControlState.js";
+import { toggleAutoMerge as toggleNativeAutoMerge } from "../actions/toggleAutoMerge.js";
 
 function setupRoutes(
   app,
   rateLimiter,
   dispatcher,
   statusCache = null,
-  jobQueue = null
+  jobQueue = null,
+  options = {}
 ) {
+  const prControlStore = options.prControlStore || getPRControlStore();
+  const toggleAutoMerge = options.toggleAutoMerge || toggleNativeAutoMerge;
+
   // Health check
   app.get("/api/health", (_req, res) => {
     const config = getConfig();
@@ -117,6 +123,46 @@ function setupRoutes(
     config.promptTemplates = { ...config.promptTemplates, ...req.body };
     setConfig(config);
     res.json({ ok: true });
+  });
+
+  app.post("/api/pr/:owner/:repo/:number/pause", (req, res) => {
+    const fullRepo = `${req.params.owner}/${req.params.repo}`;
+    const prNumber = Number(req.params.number);
+    if (!Number.isInteger(prNumber)) {
+      return res.status(400).json({ error: "Invalid PR number" });
+    }
+    const control = prControlStore.setPaused(fullRepo, prNumber, true);
+    res.json({ ok: true, control });
+  });
+
+  app.post("/api/pr/:owner/:repo/:number/resume", (req, res) => {
+    const fullRepo = `${req.params.owner}/${req.params.repo}`;
+    const prNumber = Number(req.params.number);
+    if (!Number.isInteger(prNumber)) {
+      return res.status(400).json({ error: "Invalid PR number" });
+    }
+    const control = prControlStore.setPaused(fullRepo, prNumber, false);
+    res.json({ ok: true, control });
+  });
+
+  app.post("/api/pr/:owner/:repo/:number/auto-merge", async (req, res) => {
+    const fullRepo = `${req.params.owner}/${req.params.repo}`;
+    const prNumber = Number(req.params.number);
+    const enabled = req.body?.enabled;
+
+    if (!Number.isInteger(prNumber)) {
+      return res.status(400).json({ error: "Invalid PR number" });
+    }
+    if (typeof enabled !== "boolean") {
+      return res.status(400).json({ error: "enabled boolean required" });
+    }
+
+    try {
+      const autoMerge = await toggleAutoMerge(fullRepo, prNumber, enabled);
+      res.json({ ok: true, autoMerge });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Event log endpoints

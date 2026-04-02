@@ -1,5 +1,7 @@
 function jobMatchesRepoAndNumber(job, repo, number) {
-  return typeof job?.key === "string" && job.key.includes(repo) && job.key.endsWith(`-${number}`);
+  if (typeof job?.key !== "string") return false;
+  const normalizedRepo = repo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|-)${normalizedRepo}(?:#|-).*${number}(?:$|-)`).test(job.key);
 }
 
 function prWaitingFor(status) {
@@ -32,18 +34,40 @@ function isActionableIssue(issue) {
   return issue.state === "open" && labels.some((label) => ["agent-task", "deploy-failure", "auto-fix"].includes(label));
 }
 
-function buildDashboardSnapshot({ now = Date.now(), repos = {}, statuses = [], issues = [], jobs = {} }) {
+function buildDashboardSnapshot({
+  now = Date.now(),
+  repos = {},
+  statuses = [],
+  issues = [],
+  jobs = {},
+  prControls = {},
+  settings = {},
+}) {
+  const statusPollInterval = settings.statusPollInterval || 60000;
   const repositories = Object.keys(repos).map((repo) => {
     const allRepoStatuses = statuses
       .filter((status) => status.repo === repo)
       .map((status) => {
         const jobHistory = (jobs.history || []).filter((job) => jobMatchesRepoAndNumber(job, repo, status.prNumber));
+        const activeJob = (jobs.active || []).find((job) =>
+          jobMatchesRepoAndNumber(job, repo, status.prNumber)
+        );
+        const control = prControls[`${repo}#${status.prNumber}`] || null;
         return {
           ...status,
           prAgeMinutes: minutesBetween(now, status.openedAt),
           waitingFor: prWaitingFor(status),
           iterationCount: jobHistory.length,
           jobs: jobHistory,
+          jobCount: jobHistory.length + (activeJob ? 1 : 0),
+          hasActiveJob: Boolean(activeJob),
+          activeJobElapsed: activeJob?.running || null,
+          lastJobDuration: jobHistory[0]?.duration || null,
+          nextPollInSeconds: Math.ceil(statusPollInterval / 1000),
+          isPaused: Boolean(control?.isPaused),
+          canPause: !control?.isPaused,
+          canResume: Boolean(control?.isPaused),
+          canToggleAutoMerge: true,
           actionable: isActionablePr(status),
         };
       });

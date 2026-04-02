@@ -3,14 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { formatDashboardTimestamp, getDashboardHTML } from "../src/dashboard/html.js";
 
-test("dashboard exposes a persistent in-page job detail panel", () => {
+test("dashboard renders inline PR detail instead of a persistent global job detail panel", () => {
   const html = getDashboardHTML();
 
-  assert.ok(html.includes("jobDetailPanel"), "missing persistent job detail panel");
-  assert.ok(html.includes("Absolute log path"), "missing absolute log path label");
-  assert.ok(html.includes("Captured output for"), "missing output detail label");
-  assert.ok(html.includes('data-action="openJobDetail"') || html.includes("openJobDetail"), "missing log detail open action");
-  assert.ok(html.includes('data-action="closeDetail"') || html.includes("closeDetail"), "missing close detail action");
+  assert.equal(html.includes('id="jobDetailPanel"'), false, "global job detail panel should be removed");
+  assert.ok(html.includes("renderPrDetailPanel"), "missing inline PR detail renderer");
+  assert.ok(html.includes('data-action="togglePrExpanded"') || html.includes("togglePrExpanded"), "missing PR expand/collapse action");
+  assert.ok(html.includes('data-action="showInlineJobDetail"') || html.includes("showInlineJobDetail"), "missing inline log/output action");
 });
 
 test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () => {
@@ -32,11 +31,19 @@ test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () 
   );
 });
 
-test("dashboard is a single-page live view driven by WebSockets", () => {
+test("dashboard is a repo-grouped PR operations table with filter and control hooks", () => {
   const html = getDashboardHTML();
 
   assert.equal(html.includes("const TABS ="), false, "tabbed layout should be removed");
   assert.ok(html.includes('id="liveBoard"'), "missing live dashboard container");
+  assert.ok(html.includes("repo-group"), "missing repo-group table structure");
+  assert.ok(html.includes("pr-table"), "missing PR table structure");
+  assert.ok(html.includes("renderRepoGroup"), "missing repo group renderer");
+  assert.ok(html.includes("repoFilter"), "missing repo-local filter controls");
+  assert.ok(html.includes("IntersectionObserver"), "missing repo-local infinite scroll hook");
+  assert.ok(html.includes('data-action="pausePr"') || html.includes("pausePr"), "missing pause action");
+  assert.ok(html.includes('data-action="resumePr"') || html.includes("resumePr"), "missing resume action");
+  assert.ok(html.includes('data-action="toggleAutoMerge"') || html.includes("toggleAutoMerge"), "missing auto-merge action");
   assert.ok(html.includes("Configuration"), "missing configuration section");
   assert.ok(html.includes('<details id="configSection"'), "config section should be collapsible");
   assert.equal(html.includes('<details id="configSection" class="panel" open>'), false, "config section should be collapsed by default");

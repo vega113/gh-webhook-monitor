@@ -1,6 +1,7 @@
 import { getConfig, getRepoPath } from "../config.js";
 import { logEvent } from "../logger.js";
 import { spawnAgent } from "../actions/spawnAgent.js";
+import { skipIfPRPaused } from "../prActionGuards.js";
 
 /**
  * Handle PR merge conflict detection
@@ -24,6 +25,10 @@ function handlePullRequestConflict(payload, prStateCache) {
       repo,
       "Missing PR number in conflict payload"
     );
+    return;
+  }
+
+  if (skipIfPRPaused(repo, prNumber, "paused conflict resolution")) {
     return;
   }
 

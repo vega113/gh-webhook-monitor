@@ -24,6 +24,7 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
         lastUpdated: "2026-03-27T07:59:00Z",
         openedAt: "2026-03-27T07:00:00Z",
         isDraft: false,
+        autoMergeEnabled: true,
       },
       {
         repo: "vega113/incubator-wave",
@@ -37,6 +38,7 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
         lastUpdated: "2026-03-27T07:58:00Z",
         openedAt: "2026-03-27T06:00:00Z",
         isDraft: false,
+        autoMergeEnabled: false,
       },
     ],
     issues: [
@@ -58,7 +60,13 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
       },
     ],
     jobs: {
-      active: [],
+      active: [
+        {
+          key: "review-vega113/incubator-wave-398",
+          running: "42s",
+          startTime: "2026-03-27T07:59:18Z",
+        },
+      ],
       pending: [],
       history: [
         {
@@ -81,6 +89,16 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
         }
       ],
     },
+    prControls: {
+      "vega113/incubator-wave#398": {
+        repo: "vega113/incubator-wave",
+        prNumber: 398,
+        isPaused: true,
+      },
+    },
+    settings: {
+      statusPollInterval: 60000,
+    },
   });
 
   assert.equal(snapshot.repositories.length, 2);
@@ -94,6 +112,12 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
   assert.equal(wave.prs[0].waitingFor, "Resolve merge conflicts");
   assert.equal(wave.prs[0].prAgeMinutes, 60);
   assert.equal(wave.prs[0].jobs.length, 1);
+  assert.equal(wave.prs[0].isPaused, true);
+  assert.equal(wave.prs[0].autoMergeEnabled, true);
+  assert.equal(wave.prs[0].hasActiveJob, true);
+  assert.equal(wave.prs[0].activeJobElapsed, "42s");
+  assert.equal(wave.prs[0].lastJobDuration, "15.0s");
+  assert.equal(wave.prs[0].nextPollInSeconds, 60);
 
   const tube2web = snapshot.repositories.find((r) => r.repo === "vega113/tube2web");
   assert.ok(tube2web);
