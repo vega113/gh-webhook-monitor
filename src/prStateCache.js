@@ -367,6 +367,36 @@ class PRStateCache {
   }
 
   /**
+   * Mark specific thread ids as resolved in the cached PR state.
+   * This keeps local blockers in sync immediately after a successful GraphQL mutation.
+   * @param {string} repo
+   * @param {number} prNumber
+   * @param {Array<string>} threadIds
+   * @returns {Object|null} updated state or null when no state exists
+   */
+  markThreadsResolved(repo, prNumber, threadIds = []) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const cached = this.cache.get(cacheKey);
+    const state = cached?.state;
+
+    if (!state || !state.threads || threadIds.length === 0) {
+      return state || null;
+    }
+
+    const resolvedSet = new Set(threadIds);
+    state.threads = state.threads.map((thread) =>
+      resolvedSet.has(thread.id) ? { ...thread, isResolved: true } : thread
+    );
+
+    this.cache.set(cacheKey, {
+      state,
+      expiresAt: Date.now() + this.cacheTTLSeconds * 1000,
+    });
+
+    return state;
+  }
+
+  /**
    * Get unresolved threads from a specific bot on a PR
    * @param {string} repo - Repository in format owner/repo
    * @param {number} prNumber - PR number

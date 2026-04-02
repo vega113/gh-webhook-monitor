@@ -2,7 +2,6 @@ import { getConfig, getRepoPath } from "../config.js";
 import { logEvent } from "../logger.js";
 import { renderPrompt } from "../prompts.js";
 import { spawnAgent } from "../actions/spawnAgent.js";
-import { resolveThreads } from "../actions/resolveThreads.js";
 import { hasLabel, AGENT_PR_LABEL } from "./utils.js";
 import { getRateLimiter } from "../rateLimiterInstance.js";
 
@@ -48,9 +47,8 @@ async function handlePullRequestReview(payload) {
       "RESOLVE_THREADS",
       "triggered",
       repo,
-      `PR #${pr.number}: Review from bot "${reviewer}" - auto-resolving threads`
+      `PR #${pr.number}: Review from bot "${reviewer}" - dispatcher will auto-resolve threads`
     );
-    await resolveThreads(repo, pr.number, [reviewer]);
     // Continue into normal review handling so actionable bot comments can still spawn an agent.
   }
 

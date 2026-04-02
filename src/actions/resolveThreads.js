@@ -1,6 +1,16 @@
 import { execSync } from "node:child_process";
 import { logEvent } from "../logger.js";
 
+function defaultRunGraphQL(query) {
+  const body = JSON.stringify({ query });
+  const output = execSync(`gh api graphql`, {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+    input: body,
+  });
+  return JSON.parse(output);
+}
+
 /**
  * Resolve review threads on a PR using GitHub GraphQL API
  * Fetches unresolved threads and resolves them via mutation
@@ -10,8 +20,10 @@ import { logEvent } from "../logger.js";
  * @param {Array<string>} botNames - Optional array of bot logins to filter threads by
  * @returns {Promise<Object>} Status object with count of resolved threads and details
  */
-async function resolveThreads(repo, prNumber, botNames = []) {
+async function resolveThreads(repo, prNumber, botNames = [], options = {}) {
   try {
+    const runGraphQL = options.runGraphQL || defaultRunGraphQL;
+
     logEvent(
       "RESOLVE_THREADS",
       "attempt",
@@ -28,7 +40,7 @@ async function resolveThreads(repo, prNumber, botNames = []) {
               nodes {
                 id
                 isResolved
-                comments(first: 1) {
+                comments(first: 100) {
                   nodes {
                     author {
                       login
@@ -44,13 +56,7 @@ async function resolveThreads(repo, prNumber, botNames = []) {
 
     let threads;
     try {
-      const body = JSON.stringify({ query: threadsQuery });
-      const output = execSync(`gh api graphql`, {
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-        input: body,
-      });
-      const result = JSON.parse(output);
+      const result = runGraphQL(threadsQuery);
 
       if (result.errors) {
         throw new Error(`GraphQL error: ${result.errors.map((e) => e.message).join(", ")}`);
@@ -77,8 +83,14 @@ async function resolveThreads(repo, prNumber, botNames = []) {
     let targetThreads = threads;
     if (botNames.length > 0) {
       targetThreads = threads.filter((thread) => {
-        const author = thread.comments?.nodes?.[0]?.author?.login || "";
-        return botNames.some((botName) => author.toLowerCase().includes(botName.toLowerCase()));
+        const authors = (thread.comments?.nodes || [])
+          .map((comment) => comment?.author?.login || "")
+          .filter(Boolean);
+        return authors.some((author) =>
+          botNames.some((botName) =>
+            author.toLowerCase().includes(botName.toLowerCase())
+          )
+        );
       });
     }
 
@@ -100,6 +112,7 @@ async function resolveThreads(repo, prNumber, botNames = []) {
 
     // Step 3: Resolve each thread via mutation
     let resolvedCount = 0;
+    const resolvedThreadIds = [];
     const failedThreads = [];
 
     for (const thread of targetThreads) {
@@ -115,14 +128,13 @@ async function resolveThreads(repo, prNumber, botNames = []) {
           }
         `;
 
-        const mutBody = JSON.stringify({ query: resolveMutation });
-        execSync(`gh api graphql`, {
-          encoding: "utf-8",
-          stdio: ["pipe", "pipe", "pipe"],
-          input: mutBody,
-        });
+        const result = runGraphQL(resolveMutation);
+        if (result.errors) {
+          throw new Error(`GraphQL error: ${result.errors.map((e) => e.message).join(", ")}`);
+        }
 
         resolvedCount++;
+        resolvedThreadIds.push(thread.id);
       } catch (err) {
         failedThreads.push({
           threadId: thread.id,
@@ -144,6 +156,7 @@ async function resolveThreads(repo, prNumber, botNames = []) {
       prNumber,
       repo,
       resolvedCount,
+      resolvedThreadIds,
       totalTargetThreads: targetThreads.length,
       failedThreads: failedThreads.length > 0 ? failedThreads : undefined,
       message:

@@ -106,14 +106,20 @@ app.post("/webhook", async (req, res) => {
           `PR #${prNumber}: Dispatched action to resolve bot review threads`
         );
         // Execute in background
-        resolveThreads(repo, prNumber, autoResolveBots).catch((err) => {
-          logEvent(
-            "RESOLVE_THREADS",
-            "error",
-            repo,
-            `PR #${prNumber}: ${err.message}`
-          );
-        });
+        resolveThreads(repo, prNumber, autoResolveBots)
+          .then((result) => {
+            if (result?.resolvedThreadIds?.length) {
+              prStateCache.markThreadsResolved(repo, prNumber, result.resolvedThreadIds);
+            }
+          })
+          .catch((err) => {
+            logEvent(
+              "RESOLVE_THREADS",
+              "error",
+              repo,
+              `PR #${prNumber}: ${err.message}`
+            );
+          });
       }
     }
     if (action === ActionType.RESOLVE_CONFLICT) {
