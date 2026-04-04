@@ -9,7 +9,7 @@ import { setupDispatcherRoutes } from "./dispatcherApi.js";
 import { setupStatusRoutes } from "./statusApi.js";
 import { getIssueAssignees } from "../issueCoordination.js";
 import { getPostMergeGateStatus } from "../postMergeGateState.js";
-import { collectDashboardSnapshot } from "../dashboard/data.js";
+import { collectDashboardRepoPrPage, collectDashboardSnapshot } from "../dashboard/data.js";
 import { getPRControlStore } from "../prControlState.js";
 import { toggleAutoMerge as toggleNativeAutoMerge } from "../actions/toggleAutoMerge.js";
 
@@ -23,6 +23,7 @@ function setupRoutes(
 ) {
   const prControlStore = options.prControlStore || getPRControlStore();
   const toggleAutoMerge = options.toggleAutoMerge || toggleNativeAutoMerge;
+  const collectRepoPrPage = options.collectDashboardRepoPrPage || collectDashboardRepoPrPage;
 
   // Health check
   app.get("/api/health", (_req, res) => {
@@ -174,6 +175,22 @@ function setupRoutes(
     try {
       const snapshot = await collectDashboardSnapshot(getConfig(), statusCache);
       res.json({ ok: true, snapshot });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/dashboard/repo/:owner/:repo/prs", async (req, res) => {
+    try {
+      const repo = `${req.params.owner}/${req.params.repo}`;
+      const page = await collectRepoPrPage(getConfig(), statusCache, repo, {
+        offset: Number(req.query.offset) || 0,
+        limit: Number(req.query.limit) || undefined,
+        showAll: req.query.showAll === "true",
+        filterText: req.query.filterText || "",
+        statusFilter: req.query.statusFilter || "all",
+      });
+      res.json({ ok: true, page });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

@@ -134,8 +134,12 @@ function getRepoUi(repoName) {
       expanded: false,
       filterText: '',
       statusFilter: 'all',
-      visibleCount: 25,
       expandedPrs: {},
+      rows: [],
+      totalCount: 0,
+      hasMore: false,
+      nextOffset: 0,
+      loading: false,
     };
   }
   return state.repoUi[repoName];
@@ -143,33 +147,14 @@ function getRepoUi(repoName) {
 
 function getRepoPrs(repo) {
   if (!repo) return [];
-  return state.showAll ? (repo.allPrs || repo.prs || []) : (repo.prs || []);
-}
-
-function getVisiblePrs(repo) {
   const ui = getRepoUi(repo.repo);
-  const filtered = getRepoPrs(repo).filter((pr) => matchesRepoFilter(pr, ui));
-  return filtered.slice(0, ui.visibleCount);
-}
-
-function matchesRepoFilter(pr, ui) {
-  const text = ui.filterText.trim().toLowerCase();
-  const haystack = [pr.prNumber, pr.title, pr.branch, pr.waitingFor].join(' ').toLowerCase();
-  if (text && !haystack.includes(text)) return false;
-  switch (ui.statusFilter) {
-    case 'ci-failed': return pr.ciStatus === 'failed';
-    case 'review-pending': return pr.reviewState !== 'approved';
-    case 'paused': return pr.isPaused === true;
-    case 'active-job': return pr.hasActiveJob === true;
-    case 'auto-merge': return pr.autoMergeEnabled === true;
-    default: return true;
-  }
+  return ui.rows || [];
 }
 
 function summarizeRepo(repo) {
   const prs = getRepoPrs(repo);
   const paused = prs.filter((pr) => pr.isPaused).length;
-  return { paused, totalPrs: prs.length };
+  return { paused, totalPrs: repo.summary.totalPrs || prs.length };
 }
 
 function renderSummary() {
@@ -259,9 +244,8 @@ function renderPrRow(pr, repoName) {
 function renderRepoGroup(repo) {
   const ui = getRepoUi(repo.repo);
   const summary = summarizeRepo(repo);
-  const filtered = getRepoPrs(repo).filter((pr) => matchesRepoFilter(pr, ui));
-  const visiblePrs = filtered.slice(0, ui.visibleCount);
-  const sentinel = filtered.length > visiblePrs.length ? '<div class="repo-scroll-sentinel" data-role="repoScrollSentinel" data-repo="'+esc(repo.repo)+'"></div>' : '';
+  const visiblePrs = getRepoPrs(repo);
+  const sentinel = ui.hasMore ? '<div class="repo-scroll-sentinel" data-role="repoScrollSentinel" data-repo="'+esc(repo.repo)+'"></div>' : '';
 
   return '<section class="repo-group repo-group" data-repo-group="'+esc(repo.repo)+'">'
     + '<div class="repo-row">'
@@ -284,7 +268,7 @@ function renderRepoGroup(repo) {
         + '<option value="active-job"'+(ui.statusFilter === 'active-job' ? ' selected' : '')+'>Active job</option>'
         + '<option value="auto-merge"'+(ui.statusFilter === 'auto-merge' ? ' selected' : '')+'>Auto-merge</option>'
         + '</select>'
-        + '<span class="hint">Showing '+esc(visiblePrs.length)+' of '+esc(filtered.length)+' PRs</span>'
+        + '<span class="hint">Showing '+esc(visiblePrs.length)+' of '+esc(ui.totalCount || 0)+' PRs'+(ui.loading ? ' · loading…' : '')+'</span>'
         + '</div>'
         + '<div class="repo-scroll" data-repo-scroll="'+esc(repo.repo)+'">'
         + '<table class="pr-table">'
@@ -315,9 +299,8 @@ function renderBoard() {
 }
 
 function findPr(repoName, prNumber) {
-  const repo = getRepositories().find((entry) => entry.repo === repoName);
-  if (!repo) return null;
-  return (repo.allPrs || repo.prs || []).find((pr) => String(pr.prNumber) === String(prNumber)) || null;
+  const ui = getRepoUi(repoName);
+  return (ui.rows || []).find((pr) => String(pr.prNumber) === String(prNumber)) || null;
 }
 
 async function loadInlineJobDetail(repoName, prNumber, jobKey, mode) {
@@ -352,19 +335,56 @@ function attachRepoInfiniteScrollObservers() {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
         const repoName = entry.target.getAttribute('data-repo');
-        const ui = getRepoUi(repoName);
-        ui.visibleCount += 25;
-        renderBoard();
+        loadRepoPage(repoName, { append: true }).catch((error) => console.error(error));
       });
     }, { threshold: 1 });
   }
   document.querySelectorAll('[data-role="repoScrollSentinel"]').forEach((el) => repoInfiniteObserver.observe(el));
 }
 
+async function loadRepoPage(repoName, { reset = false, append = false } = {}) {
+  const ui = getRepoUi(repoName);
+  if (ui.loading) return;
+  if (append && !ui.hasMore) return;
+
+  const offset = reset ? 0 : (append ? ui.nextOffset || ui.rows.length : 0);
+  const limit = 25;
+  ui.loading = true;
+  renderBoard();
+  try {
+    const [owner, repoSlug] = repoName.split('/');
+    const page = await fetchJson(
+      '/api/dashboard/repo/' + owner + '/' + repoSlug + '/prs?'
+        + new URLSearchParams({
+          offset: String(offset),
+          limit: String(limit),
+          showAll: String(state.showAll),
+          filterText: ui.filterText || '',
+          statusFilter: ui.statusFilter || 'all',
+        }).toString()
+    );
+    const payload = page.page;
+    ui.rows = append ? ui.rows.concat(payload.rows || []) : (payload.rows || []);
+    ui.totalCount = payload.totalCount || 0;
+    ui.hasMore = Boolean(payload.hasMore);
+    ui.nextOffset = payload.nextOffset || ui.rows.length;
+  } finally {
+    ui.loading = false;
+    renderBoard();
+  }
+}
+
 async function loadSnapshot() {
   const resp = await fetchJson('/api/dashboard');
   state.snapshot = resp.snapshot;
   renderBoard();
+  const expandedRepos = Object.values(state.repoUi)
+    .length
+    ? Object.entries(state.repoUi).filter(([, ui]) => ui.expanded).map(([repoName]) => repoName)
+    : [];
+  for (const repoName of expandedRepos) {
+    await loadRepoPage(repoName, { reset: true });
+  }
 }
 
 function checked(v){ return v ? ' checked' : ''; }
@@ -453,22 +473,27 @@ document.addEventListener('change', async (e) => {
   if (e.target && e.target.id === 'showAllToggle') {
     state.showAll = e.target.checked;
     renderBoard();
+    for (const [repoName, ui] of Object.entries(state.repoUi)) {
+      if (ui.expanded) {
+        await loadRepoPage(repoName, { reset: true });
+      }
+    }
     return;
   }
   if (e.target.matches('[data-role="repoFilter"]')) {
     const repoName = e.target.getAttribute('data-repo');
     const ui = getRepoUi(repoName);
     ui.filterText = e.target.value || '';
-    ui.visibleCount = 25;
-    renderBoard();
+    if (ui.expanded) await loadRepoPage(repoName, { reset: true });
+    else renderBoard();
     return;
   }
   if (e.target.matches('[data-role="repoStatusFilter"]')) {
     const repoName = e.target.getAttribute('data-repo');
     const ui = getRepoUi(repoName);
     ui.statusFilter = e.target.value || 'all';
-    ui.visibleCount = 25;
-    renderBoard();
+    if (ui.expanded) await loadRepoPage(repoName, { reset: true });
+    else renderBoard();
   }
 });
 
@@ -480,8 +505,10 @@ document.addEventListener('click', async (e) => {
     const repoName = btn.getAttribute('data-repo');
     const ui = getRepoUi(repoName);
     ui.expanded = !ui.expanded;
-    ui.visibleCount = Math.max(ui.visibleCount, 25);
     renderBoard();
+    if (ui.expanded && ui.rows.length === 0) {
+      await loadRepoPage(repoName, { reset: true });
+    }
   } else if (action === 'togglePrExpanded') {
     const repoName = btn.getAttribute('data-repo');
     const prNumber = btn.getAttribute('data-pr');
