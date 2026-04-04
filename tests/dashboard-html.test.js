@@ -41,6 +41,8 @@ test("dashboard is a repo-grouped PR operations table with filter and control ho
   assert.ok(html.includes("renderRepoGroup"), "missing repo group renderer");
   assert.ok(html.includes("repoFilter"), "missing repo-local filter controls");
   assert.ok(html.includes("IntersectionObserver"), "missing repo-local infinite scroll hook");
+  assert.ok(html.includes("/api/dashboard/repo/"), "missing repo pagination endpoint hook");
+  assert.ok(html.includes("loadRepoPage"), "missing paged repo row loader");
   assert.ok(html.includes('data-action="pausePr"') || html.includes("pausePr"), "missing pause action");
   assert.ok(html.includes('data-action="resumePr"') || html.includes("resumePr"), "missing resume action");
   assert.ok(html.includes('data-action="toggleAutoMerge"') || html.includes("toggleAutoMerge"), "missing auto-merge action");

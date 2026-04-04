@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { getEventLog } from "../logger.js";
 import { getJobHistory, getActiveJobs } from "../actions/spawnAgent.js";
 import { getPRStateCache } from "../dispatcherInstance.js";
-import { buildDashboardSnapshot } from "./snapshot.js";
+import { buildDashboardSnapshot, buildRepoPrPage } from "./snapshot.js";
 import { getPRControlStore } from "../prControlState.js";
 
 const ISSUE_CACHE = new Map();
@@ -85,4 +85,51 @@ async function collectDashboardSnapshot(config, statusCache) {
   };
 }
 
-export { collectDashboardSnapshot };
+async function collectDashboardRepoPrPage(config, statusCache, repo, options = {}) {
+  const prStateCache = getPRStateCache();
+  const now = Date.now();
+
+  if (!config.repos?.[repo]?.enabled) {
+    return {
+      repo,
+      rows: [],
+      totalCount: 0,
+      offset: 0,
+      limit: Number(options.limit) || Number(config.settings?.dashboardRepoPageSize || 25),
+      hasMore: false,
+      nextOffset: 0,
+    };
+  }
+
+  prStateCache.ensureRepoSynced(repo);
+  const statuses = [];
+  for (const pr of prStateCache.getAllOpenPRs(repo)) {
+    const status = await statusCache.refresh(repo, pr.prNumber);
+    if (status) statuses.push(status);
+  }
+
+  const jobs = {
+    active: [...getActiveJobs().values()].map((job) => ({
+      key: job.key,
+      pid: job.pid,
+      running: `${((Date.now() - job.startTime) / 1000).toFixed(0)}s`,
+      agentType: job.agentType,
+      output: job.output.join("").slice(-1000),
+      logFile: job.logFile,
+      startTime: new Date(job.startTime).toISOString(),
+    })),
+    history: getJobHistory().slice(0, 100),
+  };
+
+  return buildRepoPrPage({
+    now,
+    repo,
+    statuses,
+    jobs,
+    prControls: getPRControlStore().listAll(),
+    settings: config.settings || {},
+    options,
+  });
+}
+
+export { collectDashboardRepoPrPage, collectDashboardSnapshot };

@@ -98,6 +98,7 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
     },
     settings: {
       statusPollInterval: 60000,
+      dashboardRepoPageSize: 25,
     },
   });
 
@@ -108,6 +109,7 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
   assert.deepEqual(wave.issues.map((issue) => issue.number), [300]);
   assert.equal(wave.summary.actionablePrs, 1);
   assert.equal(wave.summary.actionableIssues, 1);
+  assert.equal(wave.summary.totalPrs, 2);
   assert.equal(wave.prs[0].iterationCount, 1);
   assert.equal(wave.prs[0].waitingFor, "Resolve merge conflicts");
   assert.equal(wave.prs[0].prAgeMinutes, 60);
@@ -118,6 +120,8 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
   assert.equal(wave.prs[0].activeJobElapsed, "42s");
   assert.equal(wave.prs[0].lastJobDuration, "15.0s");
   assert.equal(wave.prs[0].nextPollInSeconds, 60);
+  assert.equal(wave.prPageSize, 25);
+  assert.equal(wave.hasMorePrs, false);
 
   const tube2web = snapshot.repositories.find((r) => r.repo === "vega113/tube2web");
   assert.ok(tube2web);
