@@ -117,11 +117,16 @@ test("buildDashboardSnapshot groups actionable PRs and issues by repository", ()
   assert.equal(wave.prs[0].isPaused, true);
   assert.equal(wave.prs[0].autoMergeEnabled, true);
   assert.equal(wave.prs[0].hasActiveJob, true);
+  assert.equal(wave.prs[0].lifecycleState, "Active");
   assert.equal(wave.prs[0].activeJobElapsed, "42s");
   assert.equal(wave.prs[0].lastJobDuration, "15.0s");
+  assert.equal(wave.prs[0].nextPollAt, "2026-03-27T08:01:00.000Z");
   assert.equal(wave.prs[0].nextPollInSeconds, 60);
   assert.equal(wave.prPageSize, 25);
   assert.equal(wave.hasMorePrs, false);
+  assert.equal(wave.issues[0].lifecycleState, "Waiting");
+  assert.equal(wave.issues[0].hasActiveJob, false);
+  assert.equal(wave.issues[0].nextPollAt, "2026-03-27T08:01:00.000Z");
 
   const tube2web = snapshot.repositories.find((r) => r.repo === "vega113/tube2web");
   assert.ok(tube2web);

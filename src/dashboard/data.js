@@ -37,7 +37,7 @@ function fetchOpenIssues(repo) {
   return issues;
 }
 
-async function collectDashboardSnapshot(config, statusCache) {
+async function collectDashboardSnapshot(config, statusCache, polling = {}) {
   const prStateCache = getPRStateCache();
   const statuses = [];
   const issues = [];
@@ -79,13 +79,14 @@ async function collectDashboardSnapshot(config, statusCache) {
       jobs,
       prControls: getPRControlStore().listAll(),
       settings: config.settings || {},
+      polling,
     }),
     generatedAt: new Date(now).toISOString(),
     recentEvents: getEventLog().slice(0, 50),
   };
 }
 
-async function collectDashboardRepoPrPage(config, statusCache, repo, options = {}) {
+async function collectDashboardRepoPrPage(config, statusCache, repo, options = {}, polling = {}) {
   const prStateCache = getPRStateCache();
   const now = Date.now();
 
@@ -128,6 +129,7 @@ async function collectDashboardRepoPrPage(config, statusCache, repo, options = {
     jobs,
     prControls: getPRControlStore().listAll(),
     settings: config.settings || {},
+    polling,
     options,
   });
 }

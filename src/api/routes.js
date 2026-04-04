@@ -24,6 +24,7 @@ function setupRoutes(
   const prControlStore = options.prControlStore || getPRControlStore();
   const toggleAutoMerge = options.toggleAutoMerge || toggleNativeAutoMerge;
   const collectRepoPrPage = options.collectDashboardRepoPrPage || collectDashboardRepoPrPage;
+  const pollingState = options.pollingState || null;
 
   // Health check
   app.get("/api/health", (_req, res) => {
@@ -173,7 +174,7 @@ function setupRoutes(
 
   app.get("/api/dashboard", async (_req, res) => {
     try {
-      const snapshot = await collectDashboardSnapshot(getConfig(), statusCache);
+      const snapshot = await collectDashboardSnapshot(getConfig(), statusCache, pollingState || {});
       res.json({ ok: true, snapshot });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -189,7 +190,7 @@ function setupRoutes(
         showAll: req.query.showAll === "true",
         filterText: req.query.filterText || "",
         statusFilter: req.query.statusFilter || "all",
-      });
+      }, pollingState || {});
       res.json({ ok: true, page });
     } catch (error) {
       res.status(500).json({ error: error.message });

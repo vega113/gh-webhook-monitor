@@ -61,6 +61,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .pr-detail-row td{background:#0f141b;padding:0}.pr-detail-panel{padding:16px;display:flex;flex-direction:column;gap:14px}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.detail-card{background:#11161d;border:1px solid #222b36;border-radius:8px;padding:10px}.detail-card .k{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}.detail-card .v{font-size:13px}
 .inline-jobs{display:flex;flex-direction:column;gap:8px}.history-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;background:#11161d;border:1px solid #222b36;border-radius:6px;padding:8px}.history-item .meta{font-size:11px;color:#8b949e}
 .inline-output{background:#0d1117;padding:12px;border-radius:6px;border:1px solid #222b36;font-size:11px;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.4}
+.inline-output[data-role="activeJobTail"]{max-height:240px}
+.issue-section{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;border-top:1px solid #222b36;background:#11161d}
+.issue-section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px}
+.issue-section-header .hint{font-size:12px}
+.issue-list{display:flex;flex-direction:column;gap:10px}
+.issue-item{background:#0f141b;border:1px solid #222b36;border-radius:10px;overflow:hidden}
+.issue-item[open]{box-shadow:0 0 0 1px rgba(88,166,255,.12) inset}
+.issue-item summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(240px,2fr) repeat(4,minmax(100px,1fr));gap:12px;align-items:center;padding:12px 14px}
+.issue-item summary::-webkit-details-marker{display:none}
+.issue-item summary .issue-title{font-weight:600;font-size:13px}
+.issue-item summary .issue-sub{font-size:11px;color:#8b949e}
+.issue-detail-panel{padding:14px;display:flex;flex-direction:column;gap:14px;border-top:1px solid #222b36}
+.polling-countdown{font-variant-numeric:tabular-nums}
 .action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.repo-scroll-sentinel{height:1px}.hidden{display:none}textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;font-family:'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical}
 @media (max-width: 1100px){.repo-row{grid-template-columns:1fr 1fr;}.repo-scroll{max-height:none}.repo-scroll table,.repo-scroll thead,.repo-scroll tbody,.repo-scroll tr,.repo-scroll th,.repo-scroll td{display:block;width:100%}.repo-scroll thead{display:none}.repo-scroll tbody td{padding:8px 12px}.pr-row{border-bottom:1px solid #1f2730}}
 @media (max-width: 800px){.container{padding:12px}.topbar{padding:10px 12px}.toggle-row{flex-direction:column;align-items:flex-start}}
@@ -98,7 +111,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 </div>
 <script>
 const $ = (s) => document.querySelector(s);
-const state = { snapshot: null, showAll: false, ws: null, reconnectTimer: null, config: null, repoUi: {}, inlineJobDetails: {} };
+const state = { snapshot: null, showAll: false, ws: null, reconnectTimer: null, countdownTimer: null, config: null, repoUi: {}, inlineJobDetails: {} };
 const formatDashboardTimestamp = ${formatDashboardTimestamp.toString()};
 let repoInfiniteObserver = null;
 
@@ -114,6 +127,32 @@ async function fetchJson(url, options = {}) {
 
 function esc(s){ const d=document.createElement('div'); d.textContent=String(s ?? ''); return d.innerHTML; }
 function fmtMinutes(mins){ if(mins==null) return 'unknown'; if(mins<60) return mins+'m'; const h=Math.floor(mins/60); const m=mins%60; if(h<24) return h+'h '+m+'m'; const d=Math.floor(h/24); return d+'d '+(h%24)+'h'; }
+function formatCountdownLabel(targetIso, fallback = '-') {
+  if (!targetIso) return fallback;
+  const targetMs = Date.parse(targetIso);
+  if (!Number.isFinite(targetMs)) return fallback;
+  const remaining = Math.max(0, targetMs - Date.now());
+  const seconds = Math.ceil(remaining / 1000);
+  if (seconds < 60) return seconds + 's';
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  if (minutes < 60) return minutes + 'm ' + restSeconds + 's';
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return hours + 'h ' + restMinutes + 'm';
+}
+function renderCountdownSpan(targetIso, fallback = '-') {
+  return '<span class="polling-countdown" data-role="nextPollCountdown" data-next-poll-at="'+esc(targetIso || '')+'">'+esc(formatCountdownLabel(targetIso, fallback))+'</span>';
+}
+function updateCountdowns() {
+  document.querySelectorAll('[data-role="nextPollCountdown"]').forEach((el) => {
+    el.textContent = formatCountdownLabel(el.getAttribute('data-next-poll-at') || '', '-');
+  });
+}
+function startCountdownTicker() {
+  if (state.countdownTimer) return;
+  state.countdownTimer = setInterval(updateCountdowns, 1000);
+}
 
 function setConnection(status) {
   const dot = $('#connDot');
@@ -184,32 +223,38 @@ function renderStatusBadges(pr) {
   ].filter(Boolean).join(' ');
 }
 
-function renderInlineJobItem(pr, job) {
-  const logBtn = '<button class="secondary" data-action="showInlineJobDetail" data-mode="log" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Log</button>';
-  const outBtn = '<button class="secondary" data-action="showInlineJobDetail" data-mode="output" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(pr.repo)+'" data-pr="'+esc(pr.prNumber)+'">Output</button>';
-  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(job.code)+' · '+esc(job.duration || pr.activeJobElapsed || '?')+' · '+esc(formatDashboardTimestamp(job.startTime, { fallback: 'unknown' }))+'</div></div><div class="action-row">'+logBtn+outBtn+'</div></div>';
+function renderInlineJobItem(context, job) {
+  const detailKind = context.kind || 'pr';
+  const detailNumber = detailKind === 'issue' ? context.number : context.prNumber;
+  const logBtn = '<button class="secondary" data-action="showInlineJobDetail" data-kind="'+esc(detailKind)+'" data-mode="log" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(context.repo)+'" data-number="'+esc(detailNumber)+'">Log</button>';
+  const outBtn = '<button class="secondary" data-action="showInlineJobDetail" data-kind="'+esc(detailKind)+'" data-mode="output" data-jobkey="'+esc(job.key)+'" data-repo="'+esc(context.repo)+'" data-number="'+esc(detailNumber)+'">Output</button>';
+  const exitLabel = job.code == null ? 'running' : job.code;
+  const duration = job.duration || job.running || context.activeJobElapsed || '?';
+  return '<div class="history-item"><div><div><strong>'+esc(job.key)+'</strong></div><div class="meta">'+esc(job.agentType||'agent')+' · exit '+esc(exitLabel)+' · '+esc(duration)+' · '+esc(formatDashboardTimestamp(job.startTime, { fallback: 'unknown' }))+'</div></div><div class="action-row">'+logBtn+outBtn+'</div></div>';
 }
 
 function renderPrDetailPanel(pr, repoName) {
-  const ui = getRepoUi(repoName);
-  const detailKey = repoName + '#' + pr.prNumber;
+  const detailKey = 'pr:' + repoName + '#' + pr.prNumber;
   const inline = state.inlineJobDetails[detailKey];
   const blockers = (pr.blockers || []).length
     ? (pr.blockers || []).map((b) => '<div class="detail-card"><div class="k">Blocker</div><div class="v">'+esc(b.message)+'</div></div>').join('')
     : '<div class="detail-card"><div class="k">Blockers</div><div class="v">No blockers</div></div>';
-  const jobs = (pr.jobs || []).length
-    ? '<div class="inline-jobs">'+pr.jobs.map((job) => renderInlineJobItem(pr, job)).join('')+'</div>'
+  const jobs = ((pr.activeJob ? [pr.activeJob] : []).concat(pr.jobs || [])).length
+    ? '<div class="inline-jobs">'
+      + (pr.activeJob ? '<div class="detail-card"><div class="k">Live Tail</div><pre class="inline-output" data-role="activeJobTail">'+esc(pr.activeJobOutputTail || '(waiting for output…)')+'</pre></div>' : '')
+      + ((pr.activeJob ? [pr.activeJob] : []).concat(pr.jobs || []).map((job) => renderInlineJobItem({ kind: 'pr', repo: pr.repo, prNumber: pr.prNumber, activeJobElapsed: pr.activeJobElapsed }, job)).join(''))
+      + '</div>'
     : '<div class="empty">No jobs yet</div>';
   const inlineOutput = inline
-    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc(inline.content || 'Loading…')+'</pre></div>'
+    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc((inline.mode === 'output' && pr.activeJob && inline.jobKey === pr.activeJob.key) ? (pr.activeJobOutputTail || 'Loading…') : (inline.content || 'Loading…'))+'</pre></div>'
     : '';
 
   return '<div class="pr-detail-panel">'
     + '<div class="detail-grid">'
     + '<div class="detail-card"><div class="k">Waiting For</div><div class="v">'+esc(pr.waitingFor || 'Unknown')+'</div></div>'
     + '<div class="detail-card"><div class="k">Last Updated</div><div class="v">'+esc(formatDashboardTimestamp(pr.lastUpdated, { fallback: 'unknown' }))+'</div></div>'
-    + '<div class="detail-card"><div class="k">Active Agent</div><div class="v">'+esc(pr.hasActiveJob ? ('Running · ' + (pr.activeJobElapsed || '?')) : ('Idle · last ' + (pr.lastJobDuration || 'none')))+'</div></div>'
-    + '<div class="detail-card"><div class="k">Next Poll</div><div class="v">'+esc((pr.nextPollInSeconds || 0) + 's')+'</div></div>'
+    + '<div class="detail-card"><div class="k">Active Agent</div><div class="v">'+esc(pr.lifecycleState || (pr.hasActiveJob ? 'Active' : 'Idle'))+'</div></div>'
+    + '<div class="detail-card"><div class="k">Next Poll</div><div class="v">'+renderCountdownSpan(pr.nextPollAt, esc((pr.nextPollInSeconds || 0) + 's'))+'</div></div>'
     + blockers
     + '</div>'
     + '<div class="action-row">'
@@ -224,6 +269,47 @@ function renderPrDetailPanel(pr, repoName) {
     + '</div>';
 }
 
+function renderIssueDetailPanel(issue, repoName) {
+  const detailKey = 'issue:' + repoName + '#' + issue.number;
+  const inline = state.inlineJobDetails[detailKey];
+  const jobs = ((issue.activeJob ? [issue.activeJob] : []).concat(issue.jobs || [])).length
+    ? '<div class="inline-jobs">'
+      + (issue.activeJob ? '<div class="detail-card"><div class="k">Live Tail</div><pre class="inline-output" data-role="activeJobTail">'+esc(issue.activeJobOutputTail || '(waiting for output…)')+'</pre></div>' : '')
+      + ((issue.activeJob ? [issue.activeJob] : []).concat(issue.jobs || []).map((job) => renderInlineJobItem({ kind: 'issue', repo: issue.repo, number: issue.number, activeJobElapsed: issue.activeJobElapsed }, job)).join(''))
+      + '</div>'
+    : '<div class="empty">No jobs yet</div>';
+  const inlineOutput = inline
+    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc((inline.mode === 'output' && issue.activeJob && inline.jobKey === issue.activeJob.key) ? (issue.activeJobOutputTail || 'Loading…') : (inline.content || 'Loading…'))+'</pre></div>'
+    : '';
+
+  return '<div class="issue-detail-panel">'
+    + '<div class="detail-grid">'
+    + '<div class="detail-card"><div class="k">Waiting For</div><div class="v">'+esc(issue.waitingFor || 'Waiting')+'</div></div>'
+    + '<div class="detail-card"><div class="k">Opened</div><div class="v">'+esc(formatDashboardTimestamp(issue.openedAt, { fallback: 'unknown' }))+'</div></div>'
+    + '<div class="detail-card"><div class="k">State</div><div class="v">'+esc(issue.lifecycleState || 'Waiting')+'</div></div>'
+    + '<div class="detail-card"><div class="k">Next Poll</div><div class="v">'+renderCountdownSpan(issue.nextPollAt, esc((issue.nextPollInSeconds || 0) + 's'))+'</div></div>'
+    + '</div>'
+    + '<div class="action-row">'
+    + '<a class="secondary" style="display:inline-flex;align-items:center" href="https://github.com/'+esc(issue.repo)+'/issues/'+esc(issue.number)+'" target="_blank">Open on GitHub</a>'
+    + '</div>'
+    + '<div class="detail-card"><div class="k">Recent jobs / actions</div>'+jobs+'</div>'
+    + inlineOutput
+    + '</div>';
+}
+
+function renderIssuePanel(issue, repoName) {
+  return '<details class="issue-item" data-issue-number="'+esc(issue.number)+'">'
+    + '<summary>'
+    + '<div><div class="issue-title">#'+esc(issue.number)+' '+esc(issue.title)+'</div><div class="issue-sub">'+esc((issue.labels || []).join(', ') || 'unlabeled')+'</div></div>'
+    + '<div class="issue-title">'+esc(issue.lifecycleState || 'Waiting')+'</div>'
+    + '<div class="issue-sub">'+esc(issue.waitingFor || 'Waiting')+'</div>'
+    + '<div class="issue-sub">'+esc(issue.activeJobElapsed || 'none')+'</div>'
+    + '<div class="issue-sub">'+renderCountdownSpan(issue.nextPollAt, esc((issue.nextPollInSeconds || 0) + 's'))+'</div>'
+    + '</summary>'
+    + renderIssueDetailPanel(issue, repoName)
+    + '</details>';
+}
+
 function renderPrRow(pr, repoName) {
   const ui = getRepoUi(repoName);
   const expanded = Boolean(ui.expandedPrs[pr.prNumber]);
@@ -234,8 +320,8 @@ function renderPrRow(pr, repoName) {
     + '<td>'+renderStatusBadges(pr)+'</td>'
     + '<td>'+esc(pr.waitingFor || 'Unknown')+'</td>'
     + '<td>'+esc(elapsedCell)+'</td>'
-    + '<td>'+esc((pr.nextPollInSeconds || 0) + 's')+'</td>'
-    + '<td>'+(pr.isPaused ? 'Paused' : 'Active')+'</td>'
+    + '<td>'+renderCountdownSpan(pr.nextPollAt, esc((pr.nextPollInSeconds || 0) + 's'))+'</td>'
+    + '<td>'+esc(pr.lifecycleState || (pr.isPaused ? 'Paused' : (pr.hasActiveJob ? 'Active' : 'Waiting')) )+'</td>'
     + '<td>'+(pr.autoMergeEnabled ? 'Enabled' : 'Off')+'</td>'
     + '</tr>'
     + (expanded ? '<tr class="pr-detail-row"><td colspan="7">'+renderPrDetailPanel(pr, repoName)+'</td></tr>' : '');
@@ -245,6 +331,7 @@ function renderRepoGroup(repo) {
   const ui = getRepoUi(repo.repo);
   const summary = summarizeRepo(repo);
   const visiblePrs = getRepoPrs(repo);
+  const visibleIssues = (state.showAll ? (repo.allIssues || []) : (repo.issues || [])).slice();
   const sentinel = ui.hasMore ? '<div class="repo-scroll-sentinel" data-role="repoScrollSentinel" data-repo="'+esc(repo.repo)+'"></div>' : '';
 
   return '<section class="repo-group repo-group" data-repo-group="'+esc(repo.repo)+'">'
@@ -254,7 +341,7 @@ function renderRepoGroup(repo) {
     + '<div class="repo-cell"><div class="label">Active Jobs</div><div class="value">'+esc(repo.summary.activeJobs || 0)+'</div></div>'
     + '<div class="repo-cell"><div class="label">Paused</div><div class="value">'+esc(summary.paused)+'</div></div>'
     + '<div class="repo-cell"><div class="label">Hidden</div><div class="value">'+esc((repo.summary.hiddenPrs || 0) + (repo.summary.hiddenIssues || 0))+'</div></div>'
-    + '<div><button data-action="toggleRepoExpanded" data-repo="'+esc(repo.repo)+'">'+esc(ui.expanded ? 'Collapse' : 'Expand')+'</button></div>'
+    + '<div class="action-row"><button data-action="toggleRepoExpanded" data-repo="'+esc(repo.repo)+'">'+esc(ui.expanded ? 'Collapse' : 'Expand')+'</button><button class="secondary" data-action="refreshRepo" data-repo="'+esc(repo.repo)+'">Force refresh</button></div>'
     + '</div>'
     + (ui.expanded
       ? '<div>'
@@ -279,6 +366,12 @@ function renderRepoGroup(repo) {
         + '</table>'
         + sentinel
         + '</div>'
+        + '<div class="issue-section">'
+        + '<div class="issue-section-header"><div><h3 style="font-size:14px;color:#58a6ff">Issues</h3><div class="hint">Expandable issue cards live inside the repo section.</div></div><div class="hint">'+esc(visibleIssues.length)+' issue'+(visibleIssues.length === 1 ? '' : 's')+'</div></div>'
+        + '<div class="issue-list">'
+        + (visibleIssues.length ? visibleIssues.map((issue) => renderIssuePanel(issue, repo.repo)).join('') : '<div class="empty">No matching issues</div>')
+        + '</div>'
+        + '</div>'
         + '</div>'
       : '')
     + '</section>';
@@ -296,6 +389,7 @@ function renderBoard() {
   board.innerHTML = repos.map((repo) => renderRepoGroup(repo)).join('');
   attachRepoInfiniteScrollObservers();
   $('#generatedAt').textContent = formatDashboardTimestamp(state.snapshot?.generatedAt, { fallback: '-' });
+  updateCountdowns();
 }
 
 function findPr(repoName, prNumber) {
@@ -303,10 +397,15 @@ function findPr(repoName, prNumber) {
   return (ui.rows || []).find((pr) => String(pr.prNumber) === String(prNumber)) || null;
 }
 
-async function loadInlineJobDetail(repoName, prNumber, jobKey, mode) {
-  const detailKey = repoName + '#' + prNumber;
-  const pr = findPr(repoName, prNumber);
-  const job = (pr?.jobs || []).find((entry) => entry.key === jobKey);
+function findIssue(repoName, issueNumber) {
+  const repo = getRepositories().find((item) => item.repo === repoName);
+  return (repo?.allIssues || []).find((issue) => String(issue.number) === String(issueNumber)) || null;
+}
+
+async function loadInlineJobDetail(kind, repoName, itemNumber, jobKey, mode) {
+  const detailKey = kind + ':' + repoName + '#' + itemNumber;
+  const item = kind === 'issue' ? findIssue(repoName, itemNumber) : findPr(repoName, itemNumber);
+  const job = ([item?.activeJob].filter(Boolean).concat(item?.jobs || [])).find((entry) => entry.key === jobKey);
   if (!job) return;
   state.inlineJobDetails[detailKey] = {
     jobKey,
@@ -509,6 +608,11 @@ document.addEventListener('click', async (e) => {
     if (ui.expanded && ui.rows.length === 0) {
       await loadRepoPage(repoName, { reset: true });
     }
+  } else if (action === 'refreshRepo') {
+    const repo = btn.getAttribute('data-repo');
+    const [owner, repoName] = repo.split('/');
+    await fetchJson('/api/status/refresh/'+owner+'/'+repoName, { method: 'POST' });
+    await loadSnapshot();
   } else if (action === 'togglePrExpanded') {
     const repoName = btn.getAttribute('data-repo');
     const prNumber = btn.getAttribute('data-pr');
@@ -516,7 +620,13 @@ document.addEventListener('click', async (e) => {
     ui.expandedPrs[prNumber] = !ui.expandedPrs[prNumber];
     renderBoard();
   } else if (action === 'showInlineJobDetail') {
-    await loadInlineJobDetail(btn.getAttribute('data-repo'), btn.getAttribute('data-pr'), btn.getAttribute('data-jobkey'), btn.getAttribute('data-mode'));
+    await loadInlineJobDetail(
+      btn.getAttribute('data-kind') || 'pr',
+      btn.getAttribute('data-repo'),
+      btn.getAttribute('data-number') || btn.getAttribute('data-pr'),
+      btn.getAttribute('data-jobkey'),
+      btn.getAttribute('data-mode')
+    );
   } else if (action === 'pausePr') {
     const repo = btn.getAttribute('data-repo');
     const [owner, repoName] = repo.split('/');
@@ -599,6 +709,7 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+startCountdownTicker();
 Promise.all([loadSnapshot(), loadConfigPanel()]).then(connectWebSocket).catch((err) => {
   setConnection('error');
   console.error(err);

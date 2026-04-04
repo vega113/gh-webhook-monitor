@@ -57,6 +57,17 @@ if (recoveredJobs.length > 0) {
 }
 processQueue();
 
+const pollingState = {
+  status: {
+    intervalMs: config.settings.statusPollInterval || 60000,
+    lastRunAt: new Date().toISOString(),
+  },
+  mergeable: {
+    intervalMs: config.settings.mergeableCheckInterval || 60000,
+    lastRunAt: new Date().toISOString(),
+  },
+};
+
 // Create Express app
 const app = express();
 app.use(express.json({ verify: (req, _res, buf) => (req.rawBody = buf) }));
@@ -194,8 +205,8 @@ app.post("/webhook", async (req, res) => {
 
 // Setup API routes
 const statusCache = getStatusCache();
-setupRoutes(app, rateLimiter, dispatcher, statusCache, jobQueue);
-const liveHub = createLiveHub(server, () => collectDashboardSnapshot(getConfig(), statusCache));
+setupRoutes(app, rateLimiter, dispatcher, statusCache, jobQueue, { pollingState });
+const liveHub = createLiveHub(server, () => collectDashboardSnapshot(getConfig(), statusCache, pollingState));
 
 // Dashboard endpoint
 app.get("/", (_req, res) => res.type("html").send(getDashboardHTML()));
@@ -211,6 +222,7 @@ function startMergeablePolling() {
 
   mergeablePollingTimer = setInterval(async () => {
     try {
+      pollingState.mergeable.lastRunAt = new Date().toISOString();
       const prStateCache = getPRStateCache();
       if (!prStateCache) return;
 
@@ -287,6 +299,7 @@ function startStatusPolling() {
 
   statusPollingTimer = setInterval(async () => {
     try {
+      pollingState.status.lastRunAt = new Date().toISOString();
       const statusCache = getStatusCache();
       const prStateCache = getPRStateCache();
       if (!statusCache || !prStateCache) return;
