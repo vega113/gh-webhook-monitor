@@ -61,7 +61,6 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .pr-detail-row td{background:#0f141b;padding:0}.pr-detail-panel{padding:16px;display:flex;flex-direction:column;gap:14px}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.detail-card{background:#11161d;border:1px solid #222b36;border-radius:8px;padding:10px}.detail-card .k{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}.detail-card .v{font-size:13px}
 .inline-jobs{display:flex;flex-direction:column;gap:8px}.history-item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;background:#11161d;border:1px solid #222b36;border-radius:6px;padding:8px}.history-item .meta{font-size:11px;color:#8b949e}
 .inline-output{background:#0d1117;padding:12px;border-radius:6px;border:1px solid #222b36;font-size:11px;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.4}
-.inline-output[data-role="activeJobTail"]{max-height:240px}
 .issue-section{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;border-top:1px solid #222b36;background:#11161d}
 .issue-section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px}
 .issue-section-header .hint{font-size:12px}
@@ -73,6 +72,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .issue-item summary .issue-title{font-weight:600;font-size:13px}
 .issue-item summary .issue-sub{font-size:11px;color:#8b949e}
 .issue-detail-panel{padding:14px;display:flex;flex-direction:column;gap:14px;border-top:1px solid #222b36}
+.detail-modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(13,17,23,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px}
+.detail-modal{width:min(1100px,100%);max-height:min(85vh,900px);background:#161b22;border:1px solid #30363d;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+.detail-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #222b36;background:#11161d}
+.detail-modal-title{font-size:16px;font-weight:600;line-height:1.3;color:#fff}
+.detail-modal-subtitle{margin-top:4px;font-size:12px;color:#8b949e}
+.detail-modal-close{background:#30363d;color:#c9d1d9;border:none;border-radius:999px;width:32px;height:32px;line-height:32px;font-size:18px;flex:0 0 auto}
+.detail-modal-close:hover{background:#3b424c}
+.detail-modal-body{padding:16px;overflow:auto;flex:1}
+.detail-modal-pre{background:#0d1117;padding:14px;border-radius:10px;border:1px solid #222b36;font-size:12px;max-height:none;min-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:'SF Mono',Consolas,monospace;line-height:1.5}
+.detail-modal-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.detail-modal-chip{padding:2px 8px;border-radius:999px;background:#0d1117;border:1px solid #30363d;font-size:11px;color:#c9d1d9}
 .polling-countdown{font-variant-numeric:tabular-nums}
 .action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.repo-scroll-sentinel{height:1px}.hidden{display:none}textarea.json-editor{width:100%;min-height:280px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;font-family:'SF Mono',Consolas,monospace;line-height:1.5;resize:vertical}
 @media (max-width: 1100px){.repo-row{grid-template-columns:1fr 1fr;}.repo-scroll{max-height:none}.repo-scroll table,.repo-scroll thead,.repo-scroll tbody,.repo-scroll tr,.repo-scroll th,.repo-scroll td{display:block;width:100%}.repo-scroll thead{display:none}.repo-scroll tbody td{padding:8px 12px}.pr-row{border-bottom:1px solid #1f2730}}
@@ -109,9 +119,21 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <div id="configPanel" style="margin-top:14px"></div>
   </details>
 </div>
+<div id="detailModal" class="detail-modal-overlay hidden" aria-hidden="true">
+  <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+    <div class="detail-modal-header">
+      <div>
+        <div id="detailModalTitle" class="detail-modal-title">Job detail</div>
+        <div id="detailModalSubtitle" class="detail-modal-subtitle">-</div>
+      </div>
+      <button class="detail-modal-close" data-action="closeDetailModal" aria-label="Close detail modal">×</button>
+    </div>
+    <div id="detailModalBody" class="detail-modal-body"></div>
+  </div>
+</div>
 <script>
 const $ = (s) => document.querySelector(s);
-const state = { snapshot: null, showAll: false, ws: null, reconnectTimer: null, countdownTimer: null, config: null, repoUi: {}, inlineJobDetails: {} };
+const state = { snapshot: null, showAll: false, ws: null, reconnectTimer: null, countdownTimer: null, config: null, repoUi: {}, detailModal: null };
 const formatDashboardTimestamp = ${formatDashboardTimestamp.toString()};
 let repoInfiniteObserver = null;
 
@@ -223,6 +245,100 @@ function renderStatusBadges(pr) {
   ].filter(Boolean).join(' ');
 }
 
+function findDetailItem(repoName, itemNumber, kind) {
+  if (kind === 'issue') {
+    const repo = getRepositories().find((item) => item.repo === repoName);
+    return (repo?.allIssues || []).find((issue) => String(issue.number) === String(itemNumber)) || null;
+  }
+  const ui = getRepoUi(repoName);
+  return (ui.rows || []).find((pr) => String(pr.prNumber) === String(itemNumber)) || null;
+}
+
+function closeDetailModal() {
+  state.detailModal = null;
+  renderDetailModal();
+}
+
+function renderDetailModal() {
+  const overlay = $('#detailModal');
+  const title = $('#detailModalTitle');
+  const subtitle = $('#detailModalSubtitle');
+  const body = $('#detailModalBody');
+  if (!overlay || !title || !subtitle || !body) return;
+
+  const modal = state.detailModal;
+  if (!modal) {
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    body.innerHTML = '';
+    title.textContent = 'Job detail';
+    subtitle.textContent = '-';
+    return;
+  }
+
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
+
+  const item = findDetailItem(modal.repoName, modal.itemNumber, modal.kind);
+  const job = ([item?.activeJob].filter(Boolean).concat(item?.jobs || [])).find((entry) => entry.key === modal.jobKey) || null;
+  const label = modal.kind === 'issue'
+    ? 'Issue #' + modal.itemNumber
+    : 'PR #' + modal.itemNumber;
+  const actionLabel = modal.mode === 'log' ? 'Log' : 'Output';
+  const sourceLabel = job?.key || modal.jobKey || 'unknown job';
+
+  title.textContent = actionLabel + ' for ' + label;
+  subtitle.textContent = sourceLabel + ' · ' + modal.repoName;
+
+  const content = modal.mode === 'output'
+    ? (job?.outputTail || job?.running || modal.content || '(no output recorded)')
+    : (modal.content || 'Loading…');
+
+  body.innerHTML =
+    '<div class="detail-modal-meta">'
+    + '<span class="detail-modal-chip">'+esc(modal.repoName)+'</span>'
+    + '<span class="detail-modal-chip">'+esc(actionLabel)+'</span>'
+    + (job?.agentType ? '<span class="detail-modal-chip">'+esc(job.agentType)+'</span>' : '')
+    + (job?.running ? '<span class="detail-modal-chip">'+esc(job.running)+'</span>' : '')
+    + (item?.lifecycleState ? '<span class="detail-modal-chip">'+esc(item.lifecycleState)+'</span>' : '')
+    + '</div>'
+    + '<pre class="detail-modal-pre">'+esc(content)+'</pre>';
+}
+
+async function loadInlineJobDetail(kind, repoName, itemNumber, jobKey, mode) {
+  state.detailModal = {
+    kind,
+    repoName,
+    itemNumber,
+    jobKey,
+    mode,
+    content: mode === 'output' ? '' : 'Loading…',
+  };
+  renderDetailModal();
+
+  if (mode === 'log') {
+    const item = findDetailItem(repoName, itemNumber, kind);
+    const job = ([item?.activeJob].filter(Boolean).concat(item?.jobs || [])).find((entry) => entry.key === jobKey);
+    if (!job) {
+      state.detailModal.content = 'Job not found';
+      renderDetailModal();
+      return;
+    }
+
+    try {
+      const filename = (job.logFile || '').split('/').pop();
+      const response = await fetch('/api/logs/' + encodeURIComponent(filename));
+      state.detailModal.content = await response.text();
+      renderDetailModal();
+    } catch (error) {
+      state.detailModal.content = 'Error loading log: ' + error.message;
+      renderDetailModal();
+    }
+  } else {
+    renderDetailModal();
+  }
+}
+
 function renderInlineJobItem(context, job) {
   const detailKind = context.kind || 'pr';
   const detailNumber = detailKind === 'issue' ? context.number : context.prNumber;
@@ -234,20 +350,14 @@ function renderInlineJobItem(context, job) {
 }
 
 function renderPrDetailPanel(pr, repoName) {
-  const detailKey = 'pr:' + repoName + '#' + pr.prNumber;
-  const inline = state.inlineJobDetails[detailKey];
   const blockers = (pr.blockers || []).length
     ? (pr.blockers || []).map((b) => '<div class="detail-card"><div class="k">Blocker</div><div class="v">'+esc(b.message)+'</div></div>').join('')
     : '<div class="detail-card"><div class="k">Blockers</div><div class="v">No blockers</div></div>';
   const jobs = ((pr.activeJob ? [pr.activeJob] : []).concat(pr.jobs || [])).length
     ? '<div class="inline-jobs">'
-      + (pr.activeJob ? '<div class="detail-card"><div class="k">Live Tail</div><pre class="inline-output" data-role="activeJobTail">'+esc(pr.activeJobOutputTail || '(waiting for output…)')+'</pre></div>' : '')
       + ((pr.activeJob ? [pr.activeJob] : []).concat(pr.jobs || []).map((job) => renderInlineJobItem({ kind: 'pr', repo: pr.repo, prNumber: pr.prNumber, activeJobElapsed: pr.activeJobElapsed }, job)).join(''))
       + '</div>'
     : '<div class="empty">No jobs yet</div>';
-  const inlineOutput = inline
-    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc((inline.mode === 'output' && pr.activeJob && inline.jobKey === pr.activeJob.key) ? (pr.activeJobOutputTail || 'Loading…') : (inline.content || 'Loading…'))+'</pre></div>'
-    : '';
 
   return '<div class="pr-detail-panel">'
     + '<div class="detail-grid">'
@@ -265,22 +375,15 @@ function renderPrDetailPanel(pr, repoName) {
     + '<a class="secondary" style="display:inline-flex;align-items:center" href="https://github.com/'+esc(pr.repo)+'/pull/'+esc(pr.prNumber)+'" target="_blank">Open on GitHub</a>'
     + '</div>'
     + '<div><div class="hint" style="margin-bottom:8px">Recent jobs / actions</div>'+jobs+'</div>'
-    + inlineOutput
     + '</div>';
 }
 
 function renderIssueDetailPanel(issue, repoName) {
-  const detailKey = 'issue:' + repoName + '#' + issue.number;
-  const inline = state.inlineJobDetails[detailKey];
   const jobs = ((issue.activeJob ? [issue.activeJob] : []).concat(issue.jobs || [])).length
     ? '<div class="inline-jobs">'
-      + (issue.activeJob ? '<div class="detail-card"><div class="k">Live Tail</div><pre class="inline-output" data-role="activeJobTail">'+esc(issue.activeJobOutputTail || '(waiting for output…)')+'</pre></div>' : '')
       + ((issue.activeJob ? [issue.activeJob] : []).concat(issue.jobs || []).map((job) => renderInlineJobItem({ kind: 'issue', repo: issue.repo, number: issue.number, activeJobElapsed: issue.activeJobElapsed }, job)).join(''))
       + '</div>'
     : '<div class="empty">No jobs yet</div>';
-  const inlineOutput = inline
-    ? '<div><div class="hint" style="margin-bottom:8px">'+esc(inline.mode === 'log' ? ('Log: ' + (inline.filename || inline.jobKey)) : ('Output: ' + inline.jobKey))+'</div><pre class="inline-output">'+esc((inline.mode === 'output' && issue.activeJob && inline.jobKey === issue.activeJob.key) ? (issue.activeJobOutputTail || 'Loading…') : (inline.content || 'Loading…'))+'</pre></div>'
-    : '';
 
   return '<div class="issue-detail-panel">'
     + '<div class="detail-grid">'
@@ -293,7 +396,6 @@ function renderIssueDetailPanel(issue, repoName) {
     + '<a class="secondary" style="display:inline-flex;align-items:center" href="https://github.com/'+esc(issue.repo)+'/issues/'+esc(issue.number)+'" target="_blank">Open on GitHub</a>'
     + '</div>'
     + '<div class="detail-card"><div class="k">Recent jobs / actions</div>'+jobs+'</div>'
-    + inlineOutput
     + '</div>';
 }
 
@@ -384,47 +486,19 @@ function renderBoard() {
   const repos = getRepositories();
   if (!repos.length) {
     board.innerHTML = '<div class="panel"><div class="empty">No monitored repositories</div></div>';
+    renderDetailModal();
     return;
   }
   board.innerHTML = repos.map((repo) => renderRepoGroup(repo)).join('');
   attachRepoInfiniteScrollObservers();
   $('#generatedAt').textContent = formatDashboardTimestamp(state.snapshot?.generatedAt, { fallback: '-' });
   updateCountdowns();
+  renderDetailModal();
 }
 
 function findPr(repoName, prNumber) {
   const ui = getRepoUi(repoName);
   return (ui.rows || []).find((pr) => String(pr.prNumber) === String(prNumber)) || null;
-}
-
-function findIssue(repoName, issueNumber) {
-  const repo = getRepositories().find((item) => item.repo === repoName);
-  return (repo?.allIssues || []).find((issue) => String(issue.number) === String(issueNumber)) || null;
-}
-
-async function loadInlineJobDetail(kind, repoName, itemNumber, jobKey, mode) {
-  const detailKey = kind + ':' + repoName + '#' + itemNumber;
-  const item = kind === 'issue' ? findIssue(repoName, itemNumber) : findPr(repoName, itemNumber);
-  const job = ([item?.activeJob].filter(Boolean).concat(item?.jobs || [])).find((entry) => entry.key === jobKey);
-  if (!job) return;
-  state.inlineJobDetails[detailKey] = {
-    jobKey,
-    mode,
-    filename: (job.logFile || '').split('/').pop(),
-    content: mode === 'output' ? (job.outputTail || '(no output recorded)') : 'Loading…',
-  };
-  renderBoard();
-  if (mode === 'log') {
-    try {
-      const filename = (job.logFile || '').split('/').pop();
-      const response = await fetch('/api/logs/' + encodeURIComponent(filename));
-      state.inlineJobDetails[detailKey].content = await response.text();
-      renderBoard();
-    } catch (error) {
-      state.inlineJobDetails[detailKey].content = 'Error loading log: ' + error.message;
-      renderBoard();
-    }
-  }
 }
 
 function attachRepoInfiniteScrollObservers() {
@@ -597,6 +671,10 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('click', async (e) => {
+  if (e.target && e.target.id === 'detailModal') {
+    closeDetailModal();
+    return;
+  }
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   const action = btn.getAttribute('data-action');
@@ -627,6 +705,8 @@ document.addEventListener('click', async (e) => {
       btn.getAttribute('data-jobkey'),
       btn.getAttribute('data-mode')
     );
+  } else if (action === 'closeDetailModal') {
+    closeDetailModal();
   } else if (action === 'pausePr') {
     const repo = btn.getAttribute('data-repo');
     const [owner, repoName] = repo.split('/');
@@ -706,6 +786,12 @@ document.addEventListener('click', async (e) => {
       ignoredBots: csvValue('#ignoredBotsInput'),
     })});
     await loadConfigPanel();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.detailModal) {
+    closeDetailModal();
   }
 });
 

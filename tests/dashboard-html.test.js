@@ -3,13 +3,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { formatDashboardTimestamp, getDashboardHTML } from "../src/dashboard/html.js";
 
-test("dashboard renders inline PR detail instead of a persistent global job detail panel", () => {
+test("dashboard renders log/output in a popup modal instead of an inline panel", () => {
   const html = getDashboardHTML();
 
   assert.equal(html.includes('id="jobDetailPanel"'), false, "global job detail panel should be removed");
   assert.ok(html.includes("renderPrDetailPanel"), "missing inline PR detail renderer");
   assert.ok(html.includes('data-action="togglePrExpanded"') || html.includes("togglePrExpanded"), "missing PR expand/collapse action");
-  assert.ok(html.includes('data-action="showInlineJobDetail"') || html.includes("showInlineJobDetail"), "missing inline log/output action");
+  assert.ok(html.includes('data-action="showInlineJobDetail"') || html.includes("showInlineJobDetail"), "missing log/output modal action");
+  assert.ok(html.includes('id="detailModal"'), "missing modal container");
+  assert.ok(html.includes('data-action="closeDetailModal"') || html.includes("closeDetailModal"), "missing modal close action");
+  assert.ok(html.includes('id="detailModalBody"') || html.includes("detailModalBody"), "missing modal content container");
+  assert.equal(html.includes("activeJobTail"), false, "live tail should live in the popup modal, not inline");
 });
 
 test("dashboard head exposes explicit PNG favicons and a real ICO fallback", () => {
@@ -50,7 +54,7 @@ test("dashboard is a repo-grouped PR operations table with filter and control ho
   assert.ok(html.includes("renderIssuePanel"), "missing issue panel renderer");
   assert.ok(html.includes('class="issue-item"') || html.includes("issue-item"), "missing issue expand/collapse details");
   assert.ok(html.includes("nextPollCountdown"), "missing live next-poll countdown hook");
-  assert.ok(html.includes("activeJobTail"), "missing live active-job tail hook");
+  assert.ok(html.includes("detailModal"), "missing popup modal shell for job detail");
   assert.ok(html.includes("Configuration"), "missing configuration section");
   assert.ok(html.includes('<details id="configSection"'), "config section should be collapsible");
   assert.equal(html.includes('<details id="configSection" class="panel" open>'), false, "config section should be collapsed by default");
