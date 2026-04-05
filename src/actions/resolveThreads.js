@@ -1,15 +1,9 @@
-import { execSync } from "node:child_process";
 import { logEvent } from "../logger.js";
-
-function defaultRunGraphQL(query) {
-  const body = JSON.stringify({ query });
-  const output = execSync(`gh api graphql`, {
-    encoding: "utf-8",
-    stdio: ["pipe", "pipe", "pipe"],
-    input: body,
-  });
-  return JSON.parse(output);
-}
+import {
+  defaultRunGraphQL,
+  fetchReviewThreads,
+  matchesBotLogin,
+} from "../reviewThreads.js";
 
 /**
  * Resolve review threads on a PR using GitHub GraphQL API
@@ -31,38 +25,12 @@ async function resolveThreads(repo, prNumber, botNames = [], options = {}) {
       `PR #${prNumber}: Attempting to resolve review threads${botNames.length > 0 ? ` from bots: ${botNames.join(", ")}` : ""}`
     );
 
-    // Step 1: Fetch unresolved review threads on the PR
-    const threadsQuery = `
-      query {
-        repository(owner: "${repo.split("/")[0]}", name: "${repo.split("/")[1]}") {
-          pullRequest(number: ${prNumber}) {
-            reviewThreads(first: 100, isResolved: false) {
-              nodes {
-                id
-                isResolved
-                comments(first: 100) {
-                  nodes {
-                    author {
-                      login
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
     let threads;
     try {
-      const result = runGraphQL(threadsQuery);
-
-      if (result.errors) {
-        throw new Error(`GraphQL error: ${result.errors.map((e) => e.message).join(", ")}`);
-      }
-
-      threads = result.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
+      threads = fetchReviewThreads(repo, prNumber, {
+        runGraphQL,
+        botNames,
+      });
     } catch (err) {
       logEvent(
         "RESOLVE_THREADS",
@@ -82,16 +50,11 @@ async function resolveThreads(repo, prNumber, botNames = [], options = {}) {
     // Step 2: Filter threads by bot authors if botNames provided
     let targetThreads = threads;
     if (botNames.length > 0) {
-      targetThreads = threads.filter((thread) => {
-        const authors = (thread.comments?.nodes || [])
-          .map((comment) => comment?.author?.login || "")
-          .filter(Boolean);
-        return authors.some((author) =>
-          botNames.some((botName) =>
-            author.toLowerCase().includes(botName.toLowerCase())
-          )
-        );
-      });
+      targetThreads = threads.filter((thread) =>
+        (thread.authorLogins || []).some((author) =>
+          matchesBotLogin(author, botNames)
+        )
+      );
     }
 
     if (targetThreads.length === 0) {

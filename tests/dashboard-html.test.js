@@ -12,6 +12,7 @@ test("dashboard renders log/output in a popup modal instead of an inline panel",
   assert.ok(html.includes('data-action="showInlineJobDetail"') || html.includes("showInlineJobDetail"), "missing log/output modal action");
   assert.ok(html.includes('id="detailModal"'), "missing modal container");
   assert.ok(html.includes('data-action="closeDetailModal"') || html.includes("closeDetailModal"), "missing modal close action");
+  assert.ok(html.includes('data-action="copyDetailModalContent"') || html.includes("copyDetailModalContent"), "missing modal copy action");
   assert.ok(html.includes('id="detailModalBody"') || html.includes("detailModalBody"), "missing modal content container");
   assert.equal(html.includes("activeJobTail"), false, "live tail should live in the popup modal, not inline");
 });

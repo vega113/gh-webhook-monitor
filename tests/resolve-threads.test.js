@@ -80,3 +80,51 @@ test("markThreadsResolved updates cached unresolved thread blockers immediately"
     0
   );
 });
+
+test("refreshThreads hydrates unresolved review threads into cached PR state", async () => {
+  const cache = new PRStateCache(null, 300);
+  cache.updateFromWebhook("vega113/incubator-wave", 660, {
+    type: "pull_request",
+    pullRequest: {
+      number: 660,
+      title: "fix(rtl): wire icon-based RTL button into toolbar",
+      draft: false,
+      mergeable: true,
+      base: { ref: "main" },
+      head: { ref: "fix/rtl-toolbar-icon" },
+    },
+  });
+
+  const state = await cache.refreshThreads("vega113/incubator-wave", 660, {
+    force: true,
+    botNames: ["coderabbitai"],
+    runGraphQL() {
+      return {
+        data: {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                nodes: [
+                  {
+                    id: "thread-1",
+                    isResolved: false,
+                    comments: {
+                      nodes: [
+                        { author: { login: "vega113" } },
+                        { author: { login: "coderabbitai" } },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(state.threads.length, 1);
+  assert.equal(state.threads[0].authorLogin, "coderabbitai");
+  assert.deepEqual(state.threads[0].authorLogins, ["vega113", "coderabbitai"]);
+});

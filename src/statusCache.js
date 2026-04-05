@@ -1,4 +1,5 @@
 import { logEvent } from "./logger.js";
+import { getConfig } from "./config.js";
 
 /**
  * StatusCache: High-level status API cache for open PRs
@@ -69,8 +70,18 @@ class StatusCache {
    * @private
    */
   async buildStatus(repo, prNumber) {
-    const prState = await this.prStateCache.get(repo, prNumber);
+    let prState = await this.prStateCache.get(repo, prNumber);
     if (!prState) return null;
+
+    try {
+      const autoResolveBots = getConfig().settings?.autoResolveBots || [];
+      prState =
+        (await this.prStateCache.refreshThreads(repo, prNumber, {
+          botNames: autoResolveBots,
+        })) || prState;
+    } catch (err) {
+      logEvent("ERROR", "status-threads", repo, `PR #${prNumber}: ${err.message}`);
+    }
 
     const status = {
       prNumber,

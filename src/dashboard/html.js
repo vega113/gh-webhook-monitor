@@ -75,6 +75,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .detail-modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(13,17,23,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px}
 .detail-modal{width:min(1100px,100%);max-height:min(85vh,900px);background:#161b22;border:1px solid #30363d;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
 .detail-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #222b36;background:#11161d}
+.detail-modal-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .detail-modal-title{font-size:16px;font-weight:600;line-height:1.3;color:#fff}
 .detail-modal-subtitle{margin-top:4px;font-size:12px;color:#8b949e}
 .detail-modal-close{background:#30363d;color:#c9d1d9;border:none;border-radius:999px;width:32px;height:32px;line-height:32px;font-size:18px;flex:0 0 auto}
@@ -126,7 +127,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
         <div id="detailModalTitle" class="detail-modal-title">Job detail</div>
         <div id="detailModalSubtitle" class="detail-modal-subtitle">-</div>
       </div>
-      <button class="detail-modal-close" data-action="closeDetailModal" aria-label="Close detail modal">×</button>
+      <div class="detail-modal-actions">
+        <button class="secondary" data-action="copyDetailModalContent" id="detailModalCopyButton">Copy</button>
+        <button class="detail-modal-close" data-action="closeDetailModal" aria-label="Close detail modal">×</button>
+      </div>
     </div>
     <div id="detailModalBody" class="detail-modal-body"></div>
   </div>
@@ -259,6 +263,43 @@ function closeDetailModal() {
   renderDetailModal();
 }
 
+function getDetailModalContent(modal = state.detailModal) {
+  if (!modal) return '';
+  const item = findDetailItem(modal.repoName, modal.itemNumber, modal.kind);
+  const job = ([item?.activeJob].filter(Boolean).concat(item?.jobs || [])).find((entry) => entry.key === modal.jobKey) || null;
+  return modal.mode === 'output'
+    ? (job?.outputTail || job?.running || modal.content || '(no output recorded)')
+    : (modal.content || '');
+}
+
+async function copyText(text) {
+  const value = String(text || '');
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const input = document.createElement('textarea');
+  input.value = value;
+  input.setAttribute('readonly', 'true');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
+}
+
+async function copyDetailModalContent(button) {
+  if (!state.detailModal) return;
+  const originalLabel = button?.textContent || 'Copy';
+  await copyText(getDetailModalContent());
+  if (!button) return;
+  button.textContent = 'Copied';
+  setTimeout(() => {
+    if (button.isConnected) button.textContent = originalLabel;
+  }, 1500);
+}
+
 function renderDetailModal() {
   const overlay = $('#detailModal');
   const title = $('#detailModalTitle');
@@ -290,9 +331,7 @@ function renderDetailModal() {
   title.textContent = actionLabel + ' for ' + label;
   subtitle.textContent = sourceLabel + ' · ' + modal.repoName;
 
-  const content = modal.mode === 'output'
-    ? (job?.outputTail || job?.running || modal.content || '(no output recorded)')
-    : (modal.content || 'Loading…');
+  const content = getDetailModalContent(modal) || (modal.mode === 'log' ? 'Loading…' : '(no output recorded)');
 
   body.innerHTML =
     '<div class="detail-modal-meta">'
@@ -705,6 +744,8 @@ document.addEventListener('click', async (e) => {
       btn.getAttribute('data-jobkey'),
       btn.getAttribute('data-mode')
     );
+  } else if (action === 'copyDetailModalContent') {
+    await copyDetailModalContent(btn);
   } else if (action === 'closeDetailModal') {
     closeDetailModal();
   } else if (action === 'pausePr') {

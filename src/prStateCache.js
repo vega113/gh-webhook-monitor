@@ -1,5 +1,8 @@
 import { execSync } from "node:child_process";
 import { logEvent } from "./logger.js";
+import { fetchReviewThreads } from "./reviewThreads.js";
+
+const THREAD_SYNC_TTL_MS = 60 * 1000;
 
 /**
  * PRStateCache: Fetch and cache PR state from GitHub
@@ -53,20 +56,22 @@ class PRStateCache {
     // For now, we return a structure that the dispatcher expects
     // Actual state would be populated from webhook events
 
-    return {
-      prNumber,
-      repo,
-      openedAt: null,
-      lastObservedAt: null,
+      return {
+        prNumber,
+        repo,
+        openedAt: null,
+        lastObservedAt: null,
       mergeable: null, // null = unknown
       isDraft: false,
       base: null, // base branch name
       checkStatus: "pending", // pending, success, failure, neutral
-      reviewState: "pending", // pending, approved, changes_requested, commented
-      reviews: [],
-      checks: [],
-      comments: 0,
-    };
+        reviewState: "pending", // pending, approved, changes_requested, commented
+        reviews: [],
+        checks: [],
+        comments: 0,
+        threads: [],
+        threadSyncAt: null,
+      };
   }
 
   /**
@@ -89,6 +94,8 @@ class PRStateCache {
         reviews: [],
         checks: [],
         comments: 0,
+        threads: [],
+        threadSyncAt: null,
       };
     }
 
@@ -168,6 +175,7 @@ class PRStateCache {
         checks: [],
         comments: 0,
         threads: [],
+        threadSyncAt: null,
       };
 
       const next = {
@@ -186,6 +194,8 @@ class PRStateCache {
         latestReviews: pr.latestReviews || [],
         autoMergeRequest: pr.autoMergeRequest || null,
         lastObservedAt: pr.updatedAt || new Date().toISOString(),
+        threads: existing.threads || [],
+        threadSyncAt: existing.threadSyncAt || null,
       };
 
       this.cache.set(cacheKey, {
@@ -353,10 +363,12 @@ class PRStateCache {
         checks: [],
         comments: 0,
         threads: [],
+        threadSyncAt: null,
       };
     }
 
     state.threads = threads || [];
+    state.threadSyncAt = new Date().toISOString();
 
     // Update cache
     this.cache.set(cacheKey, {
@@ -365,6 +377,36 @@ class PRStateCache {
     });
 
     return state;
+  }
+
+  async refreshThreads(repo, prNumber, options = {}) {
+    const cacheKey = `${repo}#${prNumber}`;
+    const maxAgeMs = Number(options.maxAgeMs) || THREAD_SYNC_TTL_MS;
+    let state = this.cache.get(cacheKey)?.state || null;
+
+    if (!state) {
+      state = (await this.get(repo, prNumber)) || null;
+    }
+    if (!state) return null;
+
+    const lastThreadSyncMs = Date.parse(state.threadSyncAt || "");
+    const isFresh =
+      Number.isFinite(lastThreadSyncMs) &&
+      Date.now() - lastThreadSyncMs < maxAgeMs;
+    if (!options.force && isFresh) {
+      return state;
+    }
+
+    try {
+      const threads = fetchReviewThreads(repo, prNumber, {
+        botNames: options.botNames || [],
+        runGraphQL: options.runGraphQL,
+      });
+      return this.updateThreads(repo, prNumber, threads);
+    } catch (err) {
+      logEvent("ERROR", "fetch-pr-threads", repo, `PR #${prNumber}: ${err.message}`);
+      return state;
+    }
   }
 
   /**

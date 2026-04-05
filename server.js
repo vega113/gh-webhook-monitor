@@ -105,39 +105,12 @@ app.post("/webhook", async (req, res) => {
 
   // Execute actions from dispatcher
   const config = getConfig();
-  const prStateCache = getPRStateCache();
   for (const action of actions) {
     if (action === ActionType.RESOLVE_THREADS) {
-      const prNumber = payload.pull_request?.number;
-      if (prNumber) {
-        if (skipIfPRPaused(repo, prNumber, "paused thread resolution")) {
-          continue;
-        }
-        const autoResolveBots = config.settings.autoResolveBots || [];
-        logEvent(
-          "RESOLVE_THREADS",
-          "action-triggered",
-          repo,
-          `PR #${prNumber}: Dispatched action to resolve bot review threads`
-        );
-        // Execute in background
-        resolveThreads(repo, prNumber, autoResolveBots)
-          .then((result) => {
-            if (result?.resolvedThreadIds?.length) {
-              prStateCache.markThreadsResolved(repo, prNumber, result.resolvedThreadIds);
-            }
-          })
-          .catch((err) => {
-            logEvent(
-              "RESOLVE_THREADS",
-              "error",
-              repo,
-              `PR #${prNumber}: ${err.message}`
-            );
-          });
-      }
+      triggerThreadResolution(repo, payload.pull_request?.number, "action-triggered");
     }
     if (action === ActionType.RESOLVE_CONFLICT) {
+      const prStateCache = getPRStateCache();
       const prNumber = payload.pull_request?.number ?? payload.pull_request?.prNumber;
       if (prNumber) {
         if (skipIfPRPaused(repo, prNumber, "paused conflict resolution")) {
@@ -216,6 +189,39 @@ const mergeableCheckInterval = config.settings.mergeableCheckInterval || 60000;
 const statusPollInterval = config.settings.statusPollInterval || 60000;
 let mergeablePollingTimer = null;
 let statusPollingTimer = null;
+
+function triggerThreadResolution(repo, prNumber, source = "action-triggered") {
+  if (!prNumber) return;
+  if (skipIfPRPaused(repo, prNumber, "paused thread resolution")) {
+    return;
+  }
+
+  const latestConfig = getConfig();
+  const autoResolveBots = latestConfig.settings.autoResolveBots || [];
+  const prStateCache = getPRStateCache();
+
+  logEvent(
+    "RESOLVE_THREADS",
+    source,
+    repo,
+    `PR #${prNumber}: Dispatched action to resolve bot review threads`
+  );
+
+  resolveThreads(repo, prNumber, autoResolveBots)
+    .then((result) => {
+      if (result?.resolvedThreadIds?.length) {
+        prStateCache.markThreadsResolved(repo, prNumber, result.resolvedThreadIds);
+      }
+    })
+    .catch((err) => {
+      logEvent(
+        "RESOLVE_THREADS",
+        "error",
+        repo,
+        `PR #${prNumber}: ${err.message}`
+      );
+    });
+}
 
 function startMergeablePolling() {
   if (mergeablePollingTimer) return; // Already running
@@ -342,7 +348,11 @@ function startStatusPolling() {
           );
         }
 
-        const backlogActions = determineBacklogActions({ repo, prs: allPRs });
+        const backlogActions = determineBacklogActions({
+          repo,
+          prs: allPRs,
+          autoResolveBots: config.settings.autoResolveBots || [],
+        });
         for (const backlogAction of backlogActions) {
           if (backlogAction.type === "resolve_conflict") {
             const conflictPr = allPRs.find((pr) => pr.prNumber === backlogAction.prNumber);
@@ -360,6 +370,10 @@ function startStatusPolling() {
                 eventType: "merge_conflict",
               });
             }
+          }
+
+          if (backlogAction.type === "resolve_threads") {
+            triggerThreadResolution(repo, backlogAction.prNumber, "backlog-triggered");
           }
 
           if (backlogAction.type === "review_backlog") {
